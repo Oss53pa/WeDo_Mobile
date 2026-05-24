@@ -1,0 +1,23 @@
+{
+  "name": "TontineDigital",
+  "displayName": "WeDo",
+  "expo": {
+    "name": "WeDo",
+    "slug": "wedo-tontine",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "tontinedigital",
+    "userInterfaceStyle": "automatic",
+    "jsEngine": "hermes",
+    "newArchEnabled": false,
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.tontinedigital.app",
+      "permissions": ["INTERNET"]
+    },
+    "ios": {
+      "bundleIdentifier": "com.tontinedigital.app",
+      "supportsTablet": true
+    }
+  }
+}

@@ -1,0 +1,622 @@
+/**
+ * SettingsScreen
+ * App configuration, preferences, and account settings — "Kente Vibrant".
+ */
+
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Switch,
+  Alert,
+} from 'react-native';
+import {StackNavigationProp} from '@react-navigation/stack';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {
+  Card,
+  Button,
+  PressableScale,
+  SegmentedControl,
+  type SegmentOption,
+} from '@components/common';
+import {ChevronRightIcon, AlertIcon} from '@components/icons';
+import {
+  useTheme,
+  useThemedStyles,
+  typography,
+  spacing,
+  borderRadius,
+  iconSize,
+  type ThemedTokens,
+} from '@theme';
+import {TAB_BAR_SPACE} from '@components/navigation/CustomTabBar';
+import {RootStackParamList} from '@navigation/types';
+import {useDispatch, useSelector} from 'react-redux';
+import {AppDispatch, RootState} from '@store/store';
+import {logout} from '@store/slices/auth.slice';
+import {setBiometricEnabled} from '@store/slices/auth.slice';
+
+type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Settings'>;
+
+interface Props {
+  navigation: SettingsScreenNavigationProp;
+}
+
+type Language = 'fr' | 'en' | 'wo' | 'ar';
+type Currency = 'XOF' | 'XAF' | 'USD' | 'EUR';
+
+const SettingsScreen: React.FC<Props> = ({navigation}) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const {colors, preference, setScheme} = useTheme();
+  const s = useThemedStyles(makeStyles);
+  const {biometricEnabled} = useSelector((state: RootState) => state.auth);
+  const {profile} = useSelector((state: RootState) => state.user);
+
+  // Theme preference options (typed to match the theme hook exactly)
+  type Preference = Parameters<typeof setScheme>[0];
+  const themeOptions: SegmentOption<Preference>[] = [
+    {label: 'Clair', value: 'light'},
+    {label: 'Sombre', value: 'dark'},
+    {label: 'Système', value: 'system'},
+  ];
+
+  // Local state for settings
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [vibrationEnabled, setVibrationEnabled] = useState(true);
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>(
+    (profile?.language as Language) || 'fr'
+  );
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(
+    (profile?.preferredCurrency as Currency) || 'XOF'
+  );
+
+  const handleBiometricToggle = async (value: boolean) => {
+    try {
+      // TODO: Implement actual biometric setup
+      dispatch(setBiometricEnabled(value));
+      Alert.alert(
+        'Succès',
+        value
+          ? 'Authentification biométrique activée'
+          : 'Authentification biométrique désactivée'
+      );
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de modifier les paramètres biométriques');
+    }
+  };
+
+  const handleChangePIN = () => {
+    Alert.alert(
+      'Changer le code PIN',
+      'Vous allez être redirigé vers la page de changement de code PIN.',
+      [
+        {text: 'Annuler', style: 'cancel'},
+        {
+          text: 'Continuer',
+          onPress: () => {
+            // TODO: Navigate to change PIN screen
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Supprimer le compte',
+      'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible. Toutes vos données seront perdues.',
+      [
+        {text: 'Annuler', style: 'cancel'},
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Confirmation finale',
+              'Tapez "SUPPRIMER" pour confirmer la suppression définitive de votre compte.',
+              [
+                {text: 'Annuler', style: 'cancel'},
+                {
+                  text: 'Confirmer',
+                  style: 'destructive',
+                  onPress: async () => {
+                    // TODO: Implement account deletion
+                    await dispatch(logout()).unwrap();
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const handleExportData = () => {
+    Alert.alert(
+      'Exporter les données',
+      'Un fichier contenant toutes vos données sera généré et envoyé à votre email.',
+      [
+        {text: 'Annuler', style: 'cancel'},
+        {
+          text: 'Exporter',
+          onPress: () => {
+            // TODO: Implement data export
+            Alert.alert('Succès', 'Vos données seront envoyées à votre email sous peu.');
+          },
+        },
+      ]
+    );
+  };
+
+  const renderSettingItem = (
+    icon: string,
+    label: string,
+    value?: string,
+    onPress?: () => void,
+    showChevron: boolean = true,
+    isLast: boolean = false
+  ) => (
+    <PressableScale
+      style={[s.settingItem, isLast && s.rowLast]}
+      onPress={onPress}
+      scaleTo={0.98}>
+      <View style={s.settingLeft}>
+        <View style={s.iconChip}>
+          <Icon name={icon} size={iconSize.sm} color={colors.brand.terracotta} />
+        </View>
+        <Text style={s.settingLabel}>{label}</Text>
+      </View>
+      <View style={s.settingRight}>
+        {value && <Text style={s.settingValue}>{value}</Text>}
+        {showChevron && (
+          <ChevronRightIcon size={18} color={colors.text.tertiary} />
+        )}
+      </View>
+    </PressableScale>
+  );
+
+  const renderToggleItem = (
+    icon: string,
+    label: string,
+    description: string,
+    value: boolean,
+    onChange: (value: boolean) => void,
+    isLast: boolean = false
+  ) => (
+    <View style={[s.toggleItem, isLast && s.rowLast]}>
+      <View style={s.toggleLeft}>
+        <View style={s.iconChip}>
+          <Icon name={icon} size={iconSize.sm} color={colors.brand.terracotta} />
+        </View>
+        <View style={s.toggleText}>
+          <Text style={s.toggleLabel}>{label}</Text>
+          <Text style={s.toggleDescription}>{description}</Text>
+        </View>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        trackColor={{false: colors.border.strong, true: colors.accent.main}}
+        thumbColor={colors.surface.default}
+        ios_backgroundColor={colors.border.strong}
+      />
+    </View>
+  );
+
+  const languages: {value: Language; label: string; flag: string}[] = [
+    {value: 'fr', label: 'Français', flag: '🇫🇷'},
+    {value: 'en', label: 'English', flag: '🇬🇧'},
+    {value: 'wo', label: 'Wolof', flag: '🇸🇳'},
+    {value: 'ar', label: 'العربية', flag: '🇸🇦'},
+  ];
+
+  const currencies: {value: Currency; label: string; symbol: string}[] = [
+    {value: 'XOF', label: 'Franc CFA (XOF)', symbol: 'CFA'},
+    {value: 'XAF', label: 'Franc CFA (XAF)', symbol: 'CFA'},
+    {value: 'USD', label: 'Dollar US', symbol: '$'},
+    {value: 'EUR', label: 'Euro', symbol: '€'},
+  ];
+
+  return (
+    <ScrollView
+      style={s.container}
+      contentContainerStyle={s.content}
+      showsVerticalScrollIndicator={false}>
+      <Text style={s.screenTitle}>Paramètres</Text>
+
+      {/* Appearance Section */}
+      <Card style={s.card} padding={spacing.md}>
+        <Text style={s.sectionTitle}>Apparence</Text>
+        <Text style={s.sectionHint}>Choisissez le thème de l'application</Text>
+        <SegmentedControl
+          options={themeOptions}
+          value={preference}
+          onChange={setScheme}
+          style={s.themeControl}
+        />
+      </Card>
+
+      {/* Account Section */}
+      <Card style={s.card} padding={spacing.md}>
+        <Text style={s.sectionTitle}>Compte</Text>
+
+        {renderSettingItem('account-edit', 'Modifier le profil', undefined, () =>
+          navigation.navigate('EditProfile')
+        )}
+        {renderSettingItem(
+          'credit-card-outline',
+          'Moyens de paiement',
+          undefined,
+          () => {
+            // Navigate to payment methods
+          }
+        )}
+        {renderSettingItem('shield-check', 'Vérification KYC', `Niveau ${profile?.kycLevel || 1}`, () => {
+          // Navigate to KYC verification
+        }, true, true)}
+      </Card>
+
+      {/* Security Section */}
+      <Card style={s.card} padding={spacing.md}>
+        <Text style={s.sectionTitle}>Sécurité et confidentialité</Text>
+
+        {renderToggleItem(
+          'fingerprint',
+          'Authentification biométrique',
+          'Utiliser votre empreinte ou Face ID',
+          biometricEnabled,
+          handleBiometricToggle
+        )}
+
+        {renderSettingItem('lock-reset', 'Changer le code PIN', undefined, handleChangePIN)}
+
+        {renderSettingItem('two-factor-authentication', 'Authentification à deux facteurs', 'Désactivée', () => {
+          // Navigate to 2FA setup
+        })}
+
+        {renderSettingItem('eye-off', 'Confidentialité', undefined, () => {
+          // Navigate to privacy settings
+        }, true, true)}
+      </Card>
+
+      {/* Notifications Section */}
+      <Card style={s.card} padding={spacing.md}>
+        <Text style={s.sectionTitle}>Notifications</Text>
+
+        {renderToggleItem(
+          'bell',
+          'Notifications',
+          'Activer toutes les notifications',
+          notificationsEnabled,
+          setNotificationsEnabled,
+          !notificationsEnabled
+        )}
+
+        {notificationsEnabled && (
+          <>
+            {renderToggleItem(
+              'cellphone-message',
+              'Notifications push',
+              'Recevoir des notifications sur votre appareil',
+              pushEnabled,
+              setPushEnabled
+            )}
+
+            {renderToggleItem(
+              'email',
+              'Notifications par email',
+              'Recevoir des emails de notification',
+              emailEnabled,
+              setEmailEnabled
+            )}
+
+            {renderToggleItem(
+              'volume-high',
+              'Son',
+              'Activer le son des notifications',
+              soundEnabled,
+              setSoundEnabled
+            )}
+
+            {renderToggleItem(
+              'vibrate',
+              'Vibration',
+              'Activer la vibration',
+              vibrationEnabled,
+              setVibrationEnabled,
+              true
+            )}
+          </>
+        )}
+      </Card>
+
+      {/* Language & Region Section */}
+      <Card style={s.card} padding={spacing.md}>
+        <Text style={s.sectionTitle}>Langue et région</Text>
+
+        <PressableScale
+          style={s.settingItem}
+          scaleTo={0.98}
+          onPress={() => {
+            Alert.alert(
+              'Choisir la langue',
+              '',
+              languages.map(lang => ({
+                text: `${lang.flag} ${lang.label}`,
+                onPress: () => setSelectedLanguage(lang.value),
+              }))
+            );
+          }}>
+          <View style={s.settingLeft}>
+            <View style={s.iconChip}>
+              <Icon name="translate" size={iconSize.sm} color={colors.brand.terracotta} />
+            </View>
+            <Text style={s.settingLabel}>Langue</Text>
+          </View>
+          <View style={s.settingRight}>
+            <Text style={s.settingValue}>
+              {languages.find(l => l.value === selectedLanguage)?.label}
+            </Text>
+            <ChevronRightIcon size={18} color={colors.text.tertiary} />
+          </View>
+        </PressableScale>
+
+        <PressableScale
+          style={[s.settingItem, s.rowLast]}
+          scaleTo={0.98}
+          onPress={() => {
+            Alert.alert(
+              'Choisir la devise',
+              '',
+              currencies.map(curr => ({
+                text: `${curr.symbol} ${curr.label}`,
+                onPress: () => setSelectedCurrency(curr.value),
+              }))
+            );
+          }}>
+          <View style={s.settingLeft}>
+            <View style={s.iconChip}>
+              <Icon name="currency-usd" size={iconSize.sm} color={colors.brand.terracotta} />
+            </View>
+            <Text style={s.settingLabel}>Devise préférée</Text>
+          </View>
+          <View style={s.settingRight}>
+            <Text style={s.settingValue}>
+              {currencies.find(c => c.value === selectedCurrency)?.label}
+            </Text>
+            <ChevronRightIcon size={18} color={colors.text.tertiary} />
+          </View>
+        </PressableScale>
+      </Card>
+
+      {/* Data & Storage Section */}
+      <Card style={s.card} padding={spacing.md}>
+        <Text style={s.sectionTitle}>Données et stockage</Text>
+
+        {renderSettingItem('download', 'Exporter mes données', undefined, handleExportData)}
+
+        {renderSettingItem('delete-sweep', 'Effacer le cache', '12.5 MB', () => {
+          Alert.alert(
+            'Effacer le cache',
+            'Voulez-vous effacer les données en cache ?',
+            [
+              {text: 'Annuler', style: 'cancel'},
+              {
+                text: 'Effacer',
+                onPress: () => {
+                  Alert.alert('Succès', 'Le cache a été effacé.');
+                },
+              },
+            ]
+          );
+        }, true, true)}
+      </Card>
+
+      {/* Support Section */}
+      <Card style={s.card} padding={spacing.md}>
+        <Text style={s.sectionTitle}>Support et informations</Text>
+
+        {renderSettingItem('help-circle', "Centre d'aide", undefined, () => {
+          // Navigate to help center
+        })}
+
+        {renderSettingItem('file-document', "Conditions d'utilisation", undefined, () => {
+          // Navigate to terms
+        })}
+
+        {renderSettingItem('shield-lock', 'Politique de confidentialite', undefined, () => {
+          // Navigate to privacy policy
+        })}
+
+        {renderSettingItem('information', 'À propos', 'Version 1.0.0', () => {
+          // Navigate to about
+        }, false, true)}
+      </Card>
+
+      {/* Danger Zone */}
+      <Card variant="outline" style={[s.card, s.dangerCard]} padding={spacing.md}>
+        <Text style={[s.sectionTitle, s.dangerTitle]}>Zone dangereuse</Text>
+
+        <PressableScale
+          style={[s.settingItem, s.rowLast]}
+          scaleTo={0.98}
+          onPress={handleDeleteAccount}>
+          <View style={s.settingLeft}>
+            <View style={s.dangerIconChip}>
+              <AlertIcon size={iconSize.sm} color={colors.error} />
+            </View>
+            <Text style={s.dangerButtonText}>Supprimer mon compte</Text>
+          </View>
+          <ChevronRightIcon size={18} color={colors.error} />
+        </PressableScale>
+      </Card>
+
+      {/* Logout Button */}
+      <View style={s.logoutContainer}>
+        <Button
+          title="Se déconnecter"
+          variant="outline"
+          onPress={async () => {
+            Alert.alert(
+              'Déconnexion',
+              'Êtes-vous sûr de vouloir vous déconnecter ?',
+              [
+                {text: 'Annuler', style: 'cancel'},
+                {
+                  text: 'Déconnexion',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await dispatch(logout()).unwrap();
+                  },
+                },
+              ]
+            );
+          }}
+          icon="logout"
+          fullWidth
+        />
+      </View>
+
+      <Text style={s.versionText}>TontineDigital v1.0.0</Text>
+    </ScrollView>
+  );
+};
+
+const makeStyles = ({colors, shadows}: ThemedTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.bg.base,
+    },
+    content: {
+      padding: spacing.lg,
+      paddingBottom: TAB_BAR_SPACE + spacing.lg,
+    },
+    screenTitle: {
+      ...typography.h1,
+      color: colors.text.primary,
+      marginBottom: spacing.lg,
+    },
+    card: {
+      marginBottom: spacing.md,
+    },
+    sectionTitle: {
+      ...typography.h3,
+      fontWeight: '700',
+      color: colors.text.primary,
+      marginBottom: spacing.sm,
+    },
+    sectionHint: {
+      ...typography.caption,
+      color: colors.text.secondary,
+      marginBottom: spacing.md,
+    },
+    themeControl: {
+      marginTop: spacing.xs,
+    },
+    settingItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm + 2,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border.subtle,
+    },
+    rowLast: {
+      borderBottomWidth: 0,
+      paddingBottom: 0,
+    },
+    settingLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      flex: 1,
+    },
+    iconChip: {
+      width: 38,
+      height: 38,
+      borderRadius: borderRadius.md,
+      backgroundColor: colors.brand.terracottaSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    settingLabel: {
+      ...typography.bodyMedium,
+      color: colors.text.primary,
+      flexShrink: 1,
+    },
+    settingRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    settingValue: {
+      ...typography.caption,
+      color: colors.text.secondary,
+    },
+    toggleItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm + 2,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border.subtle,
+    },
+    toggleLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      flex: 1,
+      paddingRight: spacing.sm,
+    },
+    toggleText: {
+      flex: 1,
+    },
+    toggleLabel: {
+      ...typography.bodyMedium,
+      color: colors.text.primary,
+      marginBottom: 2,
+    },
+    toggleDescription: {
+      ...typography.small,
+      color: colors.text.secondary,
+    },
+    dangerCard: {
+      borderColor: colors.brand.crimsonSoft,
+      backgroundColor: colors.status.errorBg,
+    },
+    dangerTitle: {
+      color: colors.error,
+    },
+    dangerIconChip: {
+      width: 38,
+      height: 38,
+      borderRadius: borderRadius.md,
+      backgroundColor: colors.brand.crimsonSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dangerButtonText: {
+      ...typography.bodyMedium,
+      fontWeight: '600',
+      color: colors.error,
+    },
+    logoutContainer: {
+      marginTop: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    versionText: {
+      ...typography.caption,
+      color: colors.text.tertiary,
+      textAlign: 'center',
+      marginTop: spacing.md,
+    },
+  });
+
+export default SettingsScreen;

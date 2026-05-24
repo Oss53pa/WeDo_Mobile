@@ -1,0 +1,190 @@
+/**
+ * Verify OTP Screen — 6-digit code verification (Supabase). Premium themed UI.
+ */
+import React, {useState, useEffect} from 'react';
+import {View, Text, StyleSheet, Alert} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Animated, {FadeInDown} from 'react-native-reanimated';
+import {useDispatch} from 'react-redux';
+import {Button, OTPInput, PressableScale} from '@components/common';
+import {GradientView} from '@components/common';
+import {PatternBackground} from '@components/patterns';
+import {ChevronLeftIcon, MailIcon} from '@components/icons';
+import {useTheme, useThemedStyles, typography, spacing, borderRadius, fontFamily, type ThemedTokens} from '@theme';
+import {AuthStackScreenProps} from '@navigation/types';
+import {verifyOtp, sendOtp} from '@store/slices/auth.slice';
+import {AppDispatch} from '@store/store';
+
+type VerifyOTPScreenProps = AuthStackScreenProps<'VerifyOTP'>;
+
+const OTP_LENGTH = 6;
+const RESEND_TIMEOUT = 60;
+
+const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) => {
+  const {email} = route.params;
+  const dispatch = useDispatch<AppDispatch>();
+  const {colors} = useTheme();
+  const s = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
+
+  const [code, setCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(RESEND_TIMEOUT);
+  const [canResend, setCanResend] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setResendTimer(prev => {
+        if (prev <= 1) {
+          setCanResend(true);
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleVerify = async (value?: string) => {
+    const c = value ?? code;
+    if (c.length !== OTP_LENGTH) {
+      Alert.alert('Code invalide', 'Veuillez entrer les 6 chiffres du code');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await dispatch(verifyOtp({email, token: c})).unwrap();
+      // Auth state change in App.tsx handles navigation
+    } catch (error: any) {
+      Alert.alert('Code incorrect', error || 'Le code est invalide. Veuillez réessayer.');
+      setCode('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChange = (v: string) => {
+    setCode(v);
+    if (v.length === OTP_LENGTH) handleVerify(v);
+  };
+
+  const handleResend = async () => {
+    if (!canResend) return;
+    try {
+      await dispatch(sendOtp({email})).unwrap();
+      Alert.alert('Code renvoyé', 'Un nouveau code a été envoyé à votre e-mail');
+      setResendTimer(RESEND_TIMEOUT);
+      setCanResend(false);
+      setCode('');
+    } catch {
+      Alert.alert('Erreur', 'Impossible de renvoyer le code.');
+    }
+  };
+
+  const formatTime = (sec: number) => `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, '0')}`;
+
+  return (
+    <View style={s.container}>
+      <GradientView name="sunset" style={[s.hero, {paddingTop: insets.top + spacing.sm}]}>
+        <PatternBackground motif="dots" opacity={0.14} />
+        <View style={s.heroTop}>
+          <PressableScale style={s.backBtn} onPress={() => navigation.goBack()}>
+            <ChevronLeftIcon size={22} color="#FFFFFF" />
+          </PressableScale>
+          <Text style={s.brand}>WeDo</Text>
+          <View style={{width: 44}} />
+        </View>
+        <View style={s.heroIcon}>
+          <MailIcon size={40} color="#FFFFFF" />
+        </View>
+        <Text style={s.heroTitle}>Vérification</Text>
+        <Text style={s.heroSubtitle}>
+          Entrez le code à 6 chiffres envoyé à{'\n'}
+          <Text style={s.phone}>{email}</Text>
+        </Text>
+      </GradientView>
+
+      <Animated.View entering={FadeInDown.duration(420)} style={s.card}>
+        <OTPInput length={OTP_LENGTH} value={code} onChange={handleChange} />
+
+        <View style={s.resend}>
+          {canResend ? (
+            <PressableScale onPress={handleResend}>
+              <Text style={s.resendLink}>Renvoyer le code</Text>
+            </PressableScale>
+          ) : (
+            <Text style={s.resendTimer}>Renvoyer le code dans {formatTime(resendTimer)}</Text>
+          )}
+        </View>
+
+        <Button
+          title="Vérifier"
+          onPress={() => handleVerify()}
+          loading={isLoading}
+          disabled={isLoading || code.length !== OTP_LENGTH}
+          variant="gradient"
+          fullWidth
+          size="large"
+          testID="verify-button"
+        />
+
+        <PressableScale style={s.change} onPress={() => navigation.goBack()}>
+          <Text style={s.changeText}>Modifier l'e-mail</Text>
+        </PressableScale>
+      </Animated.View>
+    </View>
+  );
+};
+
+const makeStyles = ({colors, shadows}: ThemedTokens) =>
+  StyleSheet.create({
+    container: {flex: 1, backgroundColor: colors.bg.base},
+    hero: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xl,
+      borderBottomLeftRadius: borderRadius['2xl'],
+      borderBottomRightRadius: borderRadius['2xl'],
+      overflow: 'hidden',
+    },
+    heroTop: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md},
+    backBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    brand: {fontFamily: fontFamily.brand, fontSize: 26, color: '#FFFFFF'},
+    heroIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
+    },
+    heroTitle: {...typography.h1, color: '#FFFFFF'},
+    heroSubtitle: {...typography.body, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 22},
+    phone: {...typography.bodyMedium, color: '#FFFFFF', fontWeight: '700'},
+    card: {
+      backgroundColor: colors.surface.default,
+      borderRadius: borderRadius['2xl'],
+      padding: spacing.lg,
+      marginHorizontal: spacing.lg,
+      marginTop: -spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.border.subtle,
+      ...shadows.md,
+      shadowColor: colors.shadowColor,
+    },
+    resend: {alignItems: 'center', marginVertical: spacing.lg},
+    resendLink: {...typography.bodyMedium, color: colors.accent.main, fontWeight: '700'},
+    resendTimer: {...typography.body, color: colors.text.secondary},
+    change: {alignSelf: 'center', marginTop: spacing.md, padding: spacing.xs},
+    changeText: {...typography.caption, color: colors.text.tertiary, fontWeight: '600'},
+  });
+
+export default VerifyOTPScreen;
