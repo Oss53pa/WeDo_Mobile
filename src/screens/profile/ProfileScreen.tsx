@@ -268,6 +268,7 @@ const ProfileScreen: React.FC<Props> = ({navigation}) => {
 
         <Button title="Se déconnecter" variant="outline" onPress={handleLogout} icon="logout" fullWidth style={{marginTop: spacing.lg}} />
         <Text style={s.brandMark}>WeDo</Text>
+        <Text style={s.credit}>une application Atlas Studio</Text>
         <Text style={s.version}>Version 1.0.0</Text>
       </Animated.View>
     </ScrollView>
@@ -374,6 +375,7 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     settingIcon: {width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center'},
     settingLabel: {...typography.body, color: colors.text.primary, flex: 1, fontWeight: '500'},
     brandMark: {fontFamily: fontFamily.brand, fontSize: 26, color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.xl},
+    credit: {...typography.small, color: colors.text.tertiary, textAlign: 'center', marginTop: 2, letterSpacing: 0.4},
     version: {...typography.small, color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.xs},
   });
 

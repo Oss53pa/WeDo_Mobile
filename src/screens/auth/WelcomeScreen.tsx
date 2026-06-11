@@ -144,10 +144,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({navigation}) => {
             </PressableScale>
           </View>
           {!IS_SUPABASE_CONFIGURED && (
-            <PressableScale onPress={() => dispatch(demoLogin())} style={[s.demoBtn, {paddingBottom: insets.bottom + spacing.sm}]}>
+            <PressableScale onPress={() => dispatch(demoLogin())} style={[s.demoBtn, {paddingBottom: spacing.sm}]}>
               <Text style={s.demoText}>Accès démo</Text>
             </PressableScale>
           )}
+          <Text style={[s.credit, {paddingBottom: insets.bottom + spacing.sm}]}>
+            une application <Text style={s.creditName}>Atlas Studio</Text>
+          </Text>
         </Animated.View>
       </View>
     </View>
@@ -214,6 +217,8 @@ const makeStyles = ({colors}: ThemedTokens) =>
     link: {...typography.bodyMedium, color: colors.accent.main, fontWeight: '800'},
     demoBtn: {alignSelf: 'center', marginTop: spacing.sm, paddingTop: spacing.xs, paddingHorizontal: spacing.lg},
     demoText: {...typography.caption, color: colors.text.tertiary, fontWeight: '700'},
+    credit: {...typography.small, color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.sm, letterSpacing: 0.4},
+    creditName: {color: colors.text.secondary, fontWeight: '600'},
   });
 
 export default WelcomeScreen;
