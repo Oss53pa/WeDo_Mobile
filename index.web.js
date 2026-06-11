@@ -3,6 +3,7 @@
  * Uses react-native-web for browser rendering
  */
 
+import 'regenerator-runtime/runtime';
 import {AppRegistry} from 'react-native';
 import App from './App';
 

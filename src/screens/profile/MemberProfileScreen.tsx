@@ -47,9 +47,9 @@ type Route = RouteProp<RootStackParamList, 'MemberProfile'>;
 const REP_GRADIENTS: Record<string, [string, string]> = {
   [ReputationLevel.BRONZE]: ['#D8B084', '#B08D57'],
   [ReputationLevel.SILVER]: ['#C9C7CF', '#A8A6B0'],
-  [ReputationLevel.GOLD]: ['#FBD37A', '#F4B43C'],
+  [ReputationLevel.GOLD]: ['#E6C172', '#D4A03C'],
   [ReputationLevel.PLATINUM]: ['#A8D6E2', '#7FB7C9'],
-  [ReputationLevel.DIAMOND]: ['#9DA0F0', '#7A7EE6'],
+  [ReputationLevel.DIAMOND]: ['#A6A9D6', '#8A8ECC'],
 };
 
 const MemberProfileScreen: React.FC<{navigation: Nav; route: Route}> = ({
@@ -106,7 +106,7 @@ const MemberProfileScreen: React.FC<{navigation: Nav; route: Route}> = ({
   const name: string = user.fullName ?? 'Membre';
   const score: number = user.reputationScore ?? 0;
   const level: ReputationLevel | undefined = user.reputationLevel;
-  const ringGradient = (level && REP_GRADIENTS[level]) || ['#FBD37A', '#F4B43C'];
+  const ringGradient = (level && REP_GRADIENTS[level]) || ['#E6C172', '#D4A03C'];
   const ringProgress = Math.min(Math.max(score / 1000, 0), 1);
 
   // Collect the optional stats that are actually present on the user object.

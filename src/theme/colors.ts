@@ -1,10 +1,10 @@
 /**
- * WeDo Color System — "Kente Vibrant" premium afro-fintech
- * --------------------------------------------------------
- * Restraint + vibrancy: a warm neutral base (espresso ink + cream) lit up
- * by the four Kente accents (gold, terracotta, emerald, crimson) and a
- * royal indigo. Light + dark schemes share the same semantic shape so any
- * `theme.colors.x` reference works in both.
+ * WeDo Color System — "Kente Héritage" premium afro-fintech
+ * ----------------------------------------------------------
+ * Sober luxury: a warm neutral base (espresso ink + cream) with the four
+ * Kente accents desaturated to earth tones (ochre gold, soft terracotta,
+ * forest emerald, bordeaux) and a muted night indigo. Light + dark schemes
+ * share the same semantic shape so any `theme.colors.x` reference works in both.
  *
  * Legacy keys (primary/secondary/accent/neutral/background/text/...) are kept
  * so existing imports of `colors` keep resolving while screens migrate to the
@@ -15,30 +15,30 @@
 // RAW PALETTE — Kente brand hues (scheme-independent reference)
 // ============================================================
 export const palette = {
-  // Kente gold — prosperity
-  gold: '#F4B43C',
-  goldLight: '#FBD37A',
-  goldDark: '#C98A12',
+  // Kente gold — prosperity (muted ochre, premium restraint)
+  gold: '#D4A03C',
+  goldLight: '#E6C172',
+  goldDark: '#9E7320',
 
-  // Terracotta — heritage anchor (kept from the original brand)
-  terracotta: '#EF762D',
-  terracottaLight: '#FF9A5C',
-  terracottaDark: '#C85A1B',
+  // Terracotta — heritage anchor (softened earth tone)
+  terracotta: '#C2683C',
+  terracottaLight: '#D98D63',
+  terracottaDark: '#9C4E26',
 
-  // Emerald — growth / trust
-  emerald: '#0F9D72',
-  emeraldLight: '#3FC79A',
-  emeraldDark: '#0A6E50',
+  // Emerald — growth / trust (deep forest)
+  emerald: '#1F7A58',
+  emeraldLight: '#4FA382',
+  emeraldDark: '#155640',
 
-  // Crimson — energy / alerts
-  crimson: '#D72D45',
-  crimsonLight: '#F0566B',
-  crimsonDark: '#A01528',
+  // Crimson — energy / alerts (toward bordeaux)
+  crimson: '#B23A4E',
+  crimsonLight: '#CD6376',
+  crimsonDark: '#832435',
 
-  // Royal indigo — depth / premium
-  indigo: '#2E3192',
-  indigoLight: '#5B5FD1',
-  indigoDark: '#1C1E5E',
+  // Royal indigo — depth / premium (desaturated night blue)
+  indigo: '#3A3E7C',
+  indigoLight: '#666BB3',
+  indigoDark: '#252856',
 
   // Warm neutrals (espresso ink → cream)
   ink900: '#1A1410',
@@ -73,15 +73,15 @@ export const lightColors = {
   // --- brand accents (the Kente band) ---
   brand: {
     gold: palette.gold,
-    goldSoft: '#FCEFD2',
+    goldSoft: '#F5EBD3',
     terracotta: palette.terracotta,
-    terracottaSoft: '#FDE7D7',
+    terracottaSoft: '#F4E4D8',
     emerald: palette.emerald,
-    emeraldSoft: '#D6F2E8',
+    emeraldSoft: '#DCEBE3',
     crimson: palette.crimson,
-    crimsonSoft: '#FBDFE4',
+    crimsonSoft: '#F3E0E3',
     indigo: palette.indigo,
-    indigoSoft: '#E0E1F5',
+    indigoSoft: '#E2E3EF',
   },
 
   // --- primary action (warm espresso) ---
@@ -109,16 +109,16 @@ export const lightColors = {
     light: palette.terracottaLight,
     dark: palette.terracottaDark,
     contrast: palette.white,
-    50: '#FFF5EE',
-    100: '#FDE7D7',
-    200: '#FBD0B4',
-    300: '#FFBC8A',
+    50: '#FAF1EA',
+    100: '#F4E4D8',
+    200: '#EACDB9',
+    300: '#E2B294',
     400: palette.terracottaLight,
     500: palette.terracotta,
     600: palette.terracottaDark,
-    700: '#A8480F',
-    800: '#85380B',
-    900: '#5E2706',
+    700: '#7E3E1E',
+    800: '#643017',
+    900: '#46210F',
   },
 
   // --- secondary (warm surfaces) ---
@@ -207,10 +207,10 @@ export const lightColors = {
     failed: palette.crimson,
     online: palette.emerald,
     offline: palette.ink300,
-    successBg: '#D6F2E8',
-    warningBg: '#FCEFD2',
-    errorBg: '#FBDFE4',
-    infoBg: '#E0E1F5',
+    successBg: '#DCEBE3',
+    warningBg: '#F5EBD3',
+    errorBg: '#F3E0E3',
+    infoBg: '#E2E3EF',
   },
 
   // --- legacy background alias ---
@@ -258,16 +258,16 @@ export const lightColors = {
 // ============================================================
 export const darkColors = {
   brand: {
-    gold: '#FBC54E',
-    goldSoft: 'rgba(251,197,78,0.16)',
-    terracotta: '#FF8A4C',
-    terracottaSoft: 'rgba(255,138,76,0.16)',
-    emerald: '#28C796',
-    emeraldSoft: 'rgba(40,199,150,0.16)',
-    crimson: '#F0566B',
-    crimsonSoft: 'rgba(240,86,107,0.18)',
-    indigo: '#7A7EE6',
-    indigoSoft: 'rgba(122,126,230,0.18)',
+    gold: '#DDB05E',
+    goldSoft: 'rgba(221,176,94,0.16)',
+    terracotta: '#D98D63',
+    terracottaSoft: 'rgba(217,141,99,0.16)',
+    emerald: '#4FA382',
+    emeraldSoft: 'rgba(79,163,130,0.16)',
+    crimson: '#CD6376',
+    crimsonSoft: 'rgba(205,99,118,0.18)',
+    indigo: '#8A8ECC',
+    indigoSoft: 'rgba(138,142,204,0.18)',
   },
 
   primary: {
@@ -288,21 +288,21 @@ export const darkColors = {
   },
 
   accent: {
-    main: '#FF8A4C',
-    orange: '#FF8A4C',
-    light: '#FFB084',
+    main: '#D98D63',
+    orange: '#D98D63',
+    light: '#E6AC8C',
     dark: palette.terracotta,
     contrast: '#1A1410',
-    50: 'rgba(255,138,76,0.12)',
-    100: 'rgba(255,138,76,0.18)',
-    200: 'rgba(255,138,76,0.28)',
+    50: 'rgba(217,141,99,0.12)',
+    100: 'rgba(217,141,99,0.18)',
+    200: 'rgba(217,141,99,0.28)',
     300: '#C85A1B',
     400: palette.terracottaLight,
-    500: '#FF8A4C',
-    600: '#FFB084',
-    700: '#FFC9A8',
-    800: '#FFE0CD',
-    900: '#FFEFE4',
+    500: '#D98D63',
+    600: '#E6AC8C',
+    700: '#EDC4AB',
+    800: '#F4DCCC',
+    900: '#FAEEE6',
   },
 
   secondary: {
@@ -340,10 +340,10 @@ export const darkColors = {
 
   reputation: sharedReputation,
 
-  success: '#28C796',
-  error: '#F0566B',
-  warning: '#FBC54E',
-  info: '#7A7EE6',
+  success: '#4FA382',
+  error: '#CD6376',
+  warning: '#DDB05E',
+  info: '#8A8ECC',
 
   bg: {
     base: '#15110E',
@@ -377,16 +377,16 @@ export const darkColors = {
   },
 
   status: {
-    active: '#FF8A4C',
-    pending: '#FBC54E',
-    completed: '#28C796',
-    failed: '#F0566B',
-    online: '#28C796',
+    active: '#D98D63',
+    pending: '#DDB05E',
+    completed: '#4FA382',
+    failed: '#CD6376',
+    online: '#4FA382',
     offline: '#574A40',
-    successBg: 'rgba(40,199,150,0.16)',
-    warningBg: 'rgba(251,197,78,0.16)',
-    errorBg: 'rgba(240,86,107,0.18)',
-    infoBg: 'rgba(122,126,230,0.18)',
+    successBg: 'rgba(79,163,130,0.16)',
+    warningBg: 'rgba(221,176,94,0.16)',
+    errorBg: 'rgba(205,99,118,0.18)',
+    infoBg: 'rgba(138,142,204,0.18)',
   },
 
   background: {
@@ -412,7 +412,7 @@ export const darkColors = {
     primaryText: palette.ink900,
     secondary: '#2C231B',
     secondaryText: palette.cream,
-    accent: '#FF8A4C',
+    accent: '#D98D63',
     accentText: '#1A1410',
   },
 

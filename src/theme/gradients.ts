@@ -19,27 +19,27 @@ const horizontal = {start: {x: 0, y: 0}, end: {x: 1, y: 0}};
 const vertical = {start: {x: 0, y: 0}, end: {x: 0, y: 1}};
 
 export const lightGradients = {
-  // Hero balance card — kente sunset (gold → terracotta → crimson)
+  // Hero balance card — deep espresso → bronze ember (premium, sober)
   sunset: {
-    colors: ['#F9C846', '#F2872E', '#E0452F', '#C01F4A'],
-    locations: [0, 0.42, 0.74, 1],
+    colors: ['#2C2014', '#46301C', '#6E4526', '#9C6A33'],
+    locations: [0, 0.4, 0.75, 1],
     ...diag,
   },
-  // Full kente band — used on thin accents / progress
+  // Full kente band — used on thin accents / progress (muted tones)
   kente: {
-    colors: ['#0F9D72', '#F4B43C', '#EF762D', '#D72D45', '#2E3192'],
+    colors: ['#1F7A58', '#D4A03C', '#C2683C', '#B23A4E', '#3A3E7C'],
     ...horizontal,
   },
-  // Premium night card (royal indigo)
+  // Premium night card (desaturated royal indigo)
   night: {
-    colors: ['#3A3DA8', '#2E3192', '#1C1E5E'],
+    colors: ['#464A8F', '#3A3E7C', '#252856'],
     ...diag,
   },
-  gold: {colors: ['#FBD37A', '#F4B43C', '#D99311'], ...diag},
-  terracotta: {colors: ['#FF9A5C', '#EF762D', '#C85A1B'], ...diag},
-  emerald: {colors: ['#3FC79A', '#0F9D72', '#0A6E50'], ...diag},
-  crimson: {colors: ['#F0566B', '#D72D45', '#A01528'], ...diag},
-  indigo: {colors: ['#5B5FD1', '#2E3192', '#1C1E5E'], ...diag},
+  gold: {colors: ['#E6C172', '#D4A03C', '#9E7320'], ...diag},
+  terracotta: {colors: ['#D98D63', '#C2683C', '#9C4E26'], ...diag},
+  emerald: {colors: ['#4FA382', '#1F7A58', '#155640'], ...diag},
+  crimson: {colors: ['#CD6376', '#B23A4E', '#832435'], ...diag},
+  indigo: {colors: ['#666BB3', '#3A3E7C', '#252856'], ...diag},
   // soft cream wash for screen backgrounds
   canvas: {colors: [palette.cream, '#F4ECDD'], ...vertical},
   // glass sheen overlay
@@ -56,20 +56,20 @@ export const lightGradients = {
 
 export const darkGradients = {
   sunset: {
-    colors: ['#FBD24E', '#FF9A4C', '#E0452F', '#C01F4A'],
-    locations: [0, 0.42, 0.74, 1],
+    colors: ['#3A2A1A', '#553B22', '#7E512C', '#A8763E'],
+    locations: [0, 0.4, 0.75, 1],
     ...diag,
   },
   kente: {
-    colors: ['#28C796', '#FBC54E', '#FF8A4C', '#F0566B', '#7A7EE6'],
+    colors: ['#4FA382', '#DDB05E', '#D98D63', '#CD6376', '#8A8ECC'],
     ...horizontal,
   },
-  night: {colors: ['#3A3DA8', '#23255F', '#14163C'], ...diag},
-  gold: {colors: ['#FBD37A', '#FBC54E', '#C98A12'], ...diag},
-  terracotta: {colors: ['#FFB084', '#FF8A4C', '#C85A1B'], ...diag},
-  emerald: {colors: ['#3FC79A', '#28C796', '#0A6E50'], ...diag},
-  crimson: {colors: ['#F0566B', '#D72D45', '#A01528'], ...diag},
-  indigo: {colors: ['#7A7EE6', '#3A3DA8', '#1C1E5E'], ...diag},
+  night: {colors: ['#3F4286', '#2A2D66', '#181A40'], ...diag},
+  gold: {colors: ['#E6C172', '#DDB05E', '#9E7320'], ...diag},
+  terracotta: {colors: ['#E6AC8C', '#D98D63', '#9C4E26'], ...diag},
+  emerald: {colors: ['#4FA382', '#2E8A66', '#155640'], ...diag},
+  crimson: {colors: ['#CD6376', '#B23A4E', '#832435'], ...diag},
+  indigo: {colors: ['#8A8ECC', '#4A4E96', '#252856'], ...diag},
   canvas: {colors: ['#1A1410', '#15110E'], ...vertical},
   sheen: {
     colors: ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0)'],
