@@ -8,8 +8,10 @@ import {Platform, TextStyle} from 'react-native';
 // Font Families — Grand Hotel for the brand title, Dosis for everything else.
 const DOSIS_WEB = "'Dosis', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 export const fontFamily = {
-  // Brand font for WeDo logo/title only
-  brand: Platform.select({web: "'Grand Hotel', cursive", default: 'Grand Hotel'}),
+  // Brand font for WeDo logo/title only — native name must match the bundled
+  // file assets/fonts/GrandHotel-Regular.ttf (Android matches by filename,
+  // iOS by PostScript name).
+  brand: Platform.select({web: "'Grand Hotel', cursive", default: 'GrandHotel-Regular'}),
   // Main app font - Dosis (weights handled via fontWeight on web)
   regular: Platform.select({
     ios: 'Dosis',

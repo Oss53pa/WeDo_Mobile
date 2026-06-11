@@ -11,9 +11,28 @@
     "jsEngine": "hermes",
     "newArchEnabled": false,
     "assetBundlePatterns": ["**/*"],
+    "icon": "./assets/icon.png",
+    "plugins": [
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/GrandHotel-Regular.ttf",
+            "./assets/fonts/Dosis.ttf",
+            "./assets/fonts/Dosis-Medium.ttf",
+            "./assets/fonts/Dosis-SemiBold.ttf",
+            "./assets/fonts/Dosis-Bold.ttf"
+          ]
+        }
+      ]
+    ],
     "android": {
       "package": "com.tontinedigital.app",
-      "permissions": ["INTERNET"]
+      "permissions": ["INTERNET"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2C2014"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.tontinedigital.app",
