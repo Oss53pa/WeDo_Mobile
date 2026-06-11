@@ -1,11 +1,7 @@
-const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
+// Expo Metro config (the native android/ is generated via `expo prebuild`).
+const {getDefaultConfig} = require('expo/metro-config');
 
-/**
- * Metro configuration
- * https://facebook.github.io/metro/docs/configuration
- *
- * @type {import('metro-config').MetroConfig}
- */
-const config = {};
+/** @type {import('expo/metro-config').MetroConfig} */
+const config = getDefaultConfig(__dirname);
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+module.exports = config;
