@@ -12,7 +12,10 @@ import ManageTontineScreen from '@screens/tontine/ManageTontineScreen';
 import InviteTontineScreen from '@screens/tontine/InviteTontineScreen';
 import MemberProfileScreen from '@screens/profile/MemberProfileScreen';
 import KycScreen from '@screens/profile/KycScreen';
+import KycP2Screen from '@screens/profile/KycP2Screen';
 import AddMobileMoneyAccountScreen from '@screens/payment/AddMobileMoneyAccountScreen';
+import RegistreScreen from '@screens/tontine/RegistreScreen';
+import OrganizerDashboardScreen from '@screens/tontine/OrganizerDashboardScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -33,7 +36,10 @@ const RootNavigator: React.FC<RootNavigatorProps> = ({isAuthenticated}) => {
           <Stack.Screen name="InviteTontine" component={InviteTontineScreen} />
           <Stack.Screen name="MemberProfile" component={MemberProfileScreen} />
           <Stack.Screen name="Kyc" component={KycScreen} />
+          <Stack.Screen name="KycP2" component={KycP2Screen} />
           <Stack.Screen name="AddMobileMoneyAccount" component={AddMobileMoneyAccountScreen} />
+          <Stack.Screen name="Registre" component={RegistreScreen} />
+          <Stack.Screen name="OrganizerDashboard" component={OrganizerDashboardScreen} />
           {/* Additional modal screens accessible from anywhere */}
           {/* <Stack.Screen
             name="TontineDetail"

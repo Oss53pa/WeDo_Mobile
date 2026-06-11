@@ -137,6 +137,10 @@ export interface CreateTontineData {
   isPublic: boolean;
   enableChat: boolean;
   allowObservers: boolean;
+
+  // Trust layer (MVP): EME escrow + portable reliability gate
+  sequestreActive?: boolean; // funds held in the EME cantonnement (default true)
+  scoreMinimum?: number; // minimum reliability score to join (0..100)
 }
 
 export interface TontineFilters {

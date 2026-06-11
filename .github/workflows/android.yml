@@ -1,0 +1,93 @@
+name: Android APK
+
+# Builds a standalone, installable WeDo APK on GitHub's runner (which has the
+# Android SDK that local machines may lack — no Expo account / EAS login needed).
+# The native android/ project is generated on the fly via Expo CNG prebuild, so
+# nothing native needs to be committed. The APK is published two ways:
+#   1) as a run artifact (wedo-apk), and
+#   2) attached to a permanent `android-latest` release → stable download link.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'App.tsx'
+      - 'index.js'
+      - 'app.json'
+      - 'package.json'
+      - '.github/workflows/android.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      # RN 0.75 sits between Expo SDK 51/52 — align the whole native dependency
+      # set (react-native, reanimated, screens, svg…) to the pinned Expo SDK so
+      # the generated Gradle project is internally consistent.
+      - name: Align native deps to the Expo SDK
+        run: npx expo install --fix
+
+      - name: Generate the native Android project (CNG prebuild)
+        run: npx expo prebuild --platform android --no-install --clean
+
+      # react-native-vector-icons ships a gradle script that copies its .ttf
+      # fonts into the APK; Expo prebuild doesn't wire it, so add it ourselves.
+      - name: Bundle vector-icon fonts
+        run: |
+          GRADLE=android/app/build.gradle
+          if ! grep -q "react-native-vector-icons/fonts.gradle" "$GRADLE"; then
+            echo 'apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")' >> "$GRADLE"
+          fi
+
+      - name: Build release APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Collect APK
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk dist/wedo.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wedo-apk
+          path: dist/wedo.apk
+          if-no-files-found: error
+
+      - name: Publish to the android-latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: WeDo — APK (dernière version)
+          body: |
+            APK de test WeDo généré automatiquement par la CI GitHub.
+            Connecté au backend Supabase de production : séquestre (cantonnement EME),
+            registre infalsifiable SHA-256, score de fiabilité, paliers P0→P2.
+
+            Installation Android : Paramètres → autoriser l'installation depuis des
+            sources inconnues, puis ouvrir wedo.apk.
+          files: dist/wedo.apk
+          prerelease: true
+          make_latest: false

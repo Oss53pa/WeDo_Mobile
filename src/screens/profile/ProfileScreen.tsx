@@ -261,6 +261,7 @@ const ProfileScreen: React.FC<Props> = ({navigation}) => {
           <SettingRow icon={<BellIcon size={20} color={colors.brand.terracotta} />} bg={colors.brand.terracottaSoft} label="Notifications" onPress={() => navigation.navigate('Notifications')} />
           <SettingRow icon={<HistoryIcon size={20} color={colors.brand.indigo} />} bg={colors.brand.indigoSoft} label="Historique des transactions" onPress={() => navigation.navigate('Transactions')} />
           <SettingRow icon={<Icon name="shield-check" size={20} color={colors.brand.emerald} />} bg={colors.brand.emeraldSoft} label="Vérification d'identité" onPress={() => navigation.navigate('Kyc')} />
+          <SettingRow icon={<Icon name="shield-account" size={20} color={colors.brand.indigo} />} bg={colors.brand.indigoSoft} label="Niveau de vérification (P0 → P2)" onPress={() => navigation.navigate('KycP2' as never)} />
           <SettingRow icon={<LockIcon size={20} color={colors.brand.indigo} />} bg={colors.brand.indigoSoft} label="Sécurité & confidentialité" onPress={() => navigation.navigate('Settings')} />
           <SettingRow icon={<HelpIcon size={20} color={colors.brand.gold} />} bg={colors.brand.goldSoft} label="Aide & support" />
         </View>

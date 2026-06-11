@@ -2,8 +2,11 @@
 // Reconciles a transaction with the Mobile Money provider.
 //
 // Sandbox mode (default): marks the transaction Completed and settles the linked
-// contribution (status Paid, paid_date, member + tontine balances, notification).
-// Real mode: query the PSP for the true status before settling.
+// contribution THROUGH the séquestre. Settlement is delegated to the
+// `wedo.confirmer_cotisation` RPC, which atomically: deposits into the EME escrow,
+// appends a SHA-256-chained `mouvement`, updates the portable reliability score,
+// and auto-triggers `distribuer_tour` when the round is complete (0 human
+// intervention on the funds). Real mode: query the PSP for the true status first.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -71,51 +74,28 @@ Deno.serve(async (req) => {
       .select("*")
       .single();
 
-    // On success, settle the linked contribution + balances
+    // On success, settle the linked contribution THROUGH the séquestre.
+    let escrow: unknown = undefined;
     if (newStatus === "Completed" && tx.type === "Contribution") {
       const { data: contribution } = await admin
         .from("contributions")
-        .select("*")
+        .select("id, status")
         .eq("transaction_id", tx.id)
         .maybeSingle();
 
       if (contribution && contribution.status !== "Paid") {
-        await admin
-          .from("contributions")
-          .update({ status: "Paid", paid_date: new Date().toISOString() })
-          .eq("id", contribution.id);
+        // Escrow deposit + ledger append + score + automatic distribution.
+        const { data: result, error: rpcErr } = await admin.rpc(
+          "confirmer_cotisation",
+          { p_contribution_id: contribution.id },
+        );
+        if (rpcErr) throw rpcErr;
+        escrow = result;
 
-        // Bump member.total_contributed
-        const { data: m } = await admin
-          .from("tontine_members")
-          .select("id, total_contributed")
-          .eq("id", contribution.member_id)
-          .maybeSingle();
-        if (m) {
-          await admin
-            .from("tontine_members")
-            .update({ total_contributed: (m.total_contributed ?? 0) + tx.amount })
-            .eq("id", m.id);
-        }
-
-        // Bump tontine.current_balance
-        const { data: t } = await admin
-          .from("tontines")
-          .select("current_balance")
-          .eq("id", tx.tontine_id)
-          .maybeSingle();
-        if (t) {
-          await admin
-            .from("tontines")
-            .update({ current_balance: (t.current_balance ?? 0) + tx.amount })
-            .eq("id", tx.tontine_id);
-        }
-
-        // Notify the payer
         await admin.from("notifications").insert({
           user_id: user.id,
-          title: "Cotisation reçue",
-          body: `Votre cotisation de ${tx.amount} ${tx.currency} a bien été enregistrée.`,
+          title: "Cotisation versée au séquestre",
+          body: `Votre cotisation de ${tx.amount} ${tx.currency} est sécurisée dans le compte de cantonnement.`,
           type: "PaymentSuccess",
           related_id: tx.tontine_id,
         });
@@ -125,6 +105,7 @@ Deno.serve(async (req) => {
     return json({
       status: newStatus,
       transaction: mapTransaction(updatedTx ?? { ...tx, status: newStatus }),
+      escrow,
     });
   } catch (e) {
     return json({ error: String((e as Error)?.message ?? e) }, 500);

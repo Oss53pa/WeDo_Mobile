@@ -248,6 +248,8 @@ export const createTontine = async (data: CreateTontineData): Promise<Tontine> =
       auto_approve: data.autoApprove,
       allow_observers: data.allowObservers,
       total_rounds: data.totalMembers,
+      sequestre_active: data.sequestreActive ?? true,
+      score_minimum: data.scoreMinimum ?? 0,
     })
     .select()
     .single();
@@ -325,6 +327,23 @@ export const joinTontine = async (data: JoinTontineRequest): Promise<{success: b
   await supabase.rpc('increment_member_count', {p_tontine_id: data.tontineId});
 
   return {success: true};
+};
+
+/**
+ * Join a tontine through the trust gate (reliability score_minimum + KYC P2 if
+ * the tontine is under séquestre). Returns {success, error?, need?} from the RPC.
+ */
+export const rejoindreTontine = async (
+  tontineId: string,
+  parrainPersonneId?: string,
+): Promise<{success: boolean; error?: string; need?: 'P2' | 'SCORE'; already?: boolean}> => {
+  if (!IS_SUPABASE_CONFIGURED) return {success: true};
+  const {data, error} = await supabase.rpc('rejoindre_tontine', {
+    p_tontine_id: tontineId,
+    p_parrain_personne: parrainPersonneId ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return data as any;
 };
 
 /**
@@ -483,6 +502,7 @@ export default {
   updateTontine,
   deleteTontine,
   joinTontine,
+  rejoindreTontine,
   leaveTontine,
   inviteMembers,
   removeMember,

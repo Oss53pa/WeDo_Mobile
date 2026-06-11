@@ -29,7 +29,8 @@ import {useTheme, useThemedStyles, typography, spacing, borderRadius, type Theme
 import {TontinesStackParamList, RootStackParamList} from '@navigation/types';
 import {useDispatch, useSelector} from 'react-redux';
 import {AppDispatch, RootState} from '@store/store';
-import {fetchTontineDetail, joinTontine} from '@store/slices/tontine.slice';
+import {fetchTontineDetail} from '@store/slices/tontine.slice';
+import * as tontineApi from '@services/api/tontine.api';
 import {formatCurrency, formatDate, formatRelativeTime} from '@utils/formatting';
 
 type DetailRoute = RouteProp<TontinesStackParamList, 'TontineDetail'>;
@@ -78,9 +79,22 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const handleJoin = async () => {
     setJoining(true);
     try {
-      await dispatch(joinTontine({tontineId})).unwrap();
-      show('Demande envoyée ! Vous rejoindrez la tontine dès validation.', {type: 'success'});
-      await load();
+      // Gated join: enforces the reliability score_minimum + KYC P2 (séquestre).
+      const res = await tontineApi.rejoindreTontine(tontineId);
+      if (res?.success) {
+        show(
+          res.already
+            ? 'Vous êtes déjà membre de cette tontine.'
+            : 'Demande envoyée ! Vous rejoindrez la tontine dès validation.',
+          {type: 'success'},
+        );
+        await load();
+      } else if (res?.need === 'P2') {
+        show(res.error ?? 'Vérification P2 requise.', {type: 'error'});
+        rootNav.navigate('KycP2');
+      } else {
+        show(res?.error ?? 'Impossible de rejoindre la tontine.', {type: 'error'});
+      }
     } catch (e: any) {
       show(typeof e === 'string' ? e : 'Impossible de rejoindre la tontine.', {type: 'error'});
     } finally {
@@ -247,6 +261,16 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
                   fullWidth
                   icon="cog"
                   onPress={() => rootNav.navigate('ManageTontine', {tontineId})}
+                  style={{marginTop: spacing.sm}}
+                />
+              )}
+              {(t.isMember || isAdmin) && t.status !== 'Open' && (
+                <Button
+                  title="Registre infalsifiable"
+                  variant="ghost"
+                  fullWidth
+                  icon="shield-check"
+                  onPress={() => rootNav.navigate('Registre', {tontineId})}
                   style={{marginTop: spacing.sm}}
                 />
               )}

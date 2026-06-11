@@ -266,6 +266,29 @@ const ManageTontineScreen: React.FC<{navigation: Nav; route: Route}> = ({
           </Card>
         </Animated.View>
 
+        {/* Trust layer quick actions */}
+        <Animated.View entering={FadeInDown.delay(40).duration(360)} style={s.section}>
+          <Text style={s.sectionTitle}>Confiance & transparence</Text>
+          <Button
+            title="Tableau de bord organisateur"
+            variant="gradient"
+            gradient="indigo"
+            fullWidth
+            size="large"
+            icon="view-dashboard"
+            onPress={() => navigation.navigate('OrganizerDashboard', {tontineId})}
+          />
+          <Button
+            title="Registre infalsifiable"
+            variant="outline"
+            fullWidth
+            size="large"
+            icon="shield-check"
+            onPress={() => navigation.navigate('Registre', {tontineId})}
+            style={{marginTop: spacing.sm}}
+          />
+        </Animated.View>
+
         {/* Lifecycle actions */}
         {(t.status === 'Open' || t.status === 'Active') && (
           <Animated.View entering={FadeInDown.delay(60).duration(360)} style={s.section}>

@@ -46,6 +46,8 @@ const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
     latePenaltyPercent: 5,
     gracePeriodDays: 3,
     minReputationRequired: 0,
+    scoreMinimum: 0,
+    sequestreActive: true,
     isPublic: false,
     depositAmount: 0,
     chatEnabled: true,
@@ -217,7 +219,9 @@ const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
             <Input label="Pénalité de retard (%)" placeholder="5" value={formData.latePenaltyPercent != null ? String(formData.latePenaltyPercent) : ''} onChangeText={v => update('latePenaltyPercent', parseFloat(v) || 0)} type="number" />
             <Input label="Période de grâce (jours)" placeholder="3" value={formData.gracePeriodDays != null ? String(formData.gracePeriodDays) : ''} onChangeText={v => update('gracePeriodDays', parseInt(v, 10) || 0)} type="number" />
             <Input label="Réputation minimale" placeholder="0" value={formData.minReputationRequired != null ? String(formData.minReputationRequired) : ''} onChangeText={v => update('minReputationRequired', parseInt(v, 10) || 0)} type="number" helperText="0 = aucun minimum" />
+            <Input label="Score de fiabilité minimum (0–100)" placeholder="0" value={formData.scoreMinimum != null ? String(formData.scoreMinimum) : ''} onChangeText={v => update('scoreMinimum', Math.max(0, Math.min(100, parseInt(v, 10) || 0)))} type="number" helperText="Filtre d'entrée basé sur le score portable" />
             <View style={s.toggles}>
+              <ToggleRow label="Séquestre (cantonnement EME)" description="Fonds sécurisés hors de nos comptes · KYC P2 requis" value={formData.sequestreActive !== false} onChange={(v: boolean) => update('sequestreActive', v)} />
               <ToggleRow label="Tontine publique" description="Visible dans la recherche" value={!!formData.isPublic} onChange={(v: boolean) => update('isPublic', v)} />
               <ToggleRow label="Chat activé" description="Discussions de groupe" value={!!formData.chatEnabled} onChange={(v: boolean) => update('chatEnabled', v)} />
               <ToggleRow label="Votes activés" description="Décisions par vote" value={!!formData.votingEnabled} onChange={(v: boolean) => update('votingEnabled', v)} />
