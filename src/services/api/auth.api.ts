@@ -9,6 +9,29 @@ import {supabase} from '@services/supabase';
 import {User} from '@types';
 
 /**
+ * Maps Supabase OTP-send errors to French. The 60s anti-spam cooldown
+ * ("you can only request this after N seconds") means a code was ALREADY
+ * sent moments ago — treat it as success so the UI proceeds to the code
+ * screen instead of dead-ending on an English error.
+ */
+const handleOtpSendError = (error: {message: string} | null): {success: boolean} => {
+  if (!error) return {success: true};
+  const msg = error.message || '';
+  if (/after \d+ seconds/i.test(msg)) {
+    return {success: true};
+  }
+  if (/rate limit/i.test(msg)) {
+    throw new Error(
+      "Limite d'envoi d'e-mails atteinte. Patientez environ une heure, ou utilisez le dernier code reçu (valable 60 min).",
+    );
+  }
+  if (/invalid|address/i.test(msg)) {
+    throw new Error('Adresse e-mail invalide.');
+  }
+  throw new Error(msg);
+};
+
+/**
  * Send a one-time code to an email address (works for both login and signup).
  */
 export const sendOtp = async (email: string): Promise<{success: boolean}> => {
@@ -16,8 +39,7 @@ export const sendOtp = async (email: string): Promise<{success: boolean}> => {
     email: email.trim().toLowerCase(),
     options: {shouldCreateUser: true},
   });
-  if (error) throw new Error(error.message);
-  return {success: true};
+  return handleOtpSendError(error);
 };
 
 /**
@@ -32,7 +54,12 @@ export const verifyOtp = async (
     token,
     type: 'email',
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (/expired|invalid/i.test(error.message || '')) {
+      throw new Error('Code invalide ou expiré. Demandez un nouveau code.');
+    }
+    throw new Error(error.message);
+  }
 
   // Fetch profile
   const {data: profile, error: profileError} = await supabase
@@ -82,8 +109,7 @@ export const register = async (data: {
       },
     },
   });
-  if (error) throw new Error(error.message);
-  return {success: true};
+  return handleOtpSendError(error);
 };
 
 /**
