@@ -1,9 +1,11 @@
 /**
  * Verify OTP Screen — 6-digit code verification (Supabase). Premium themed UI.
  */
-import React, {useState, useEffect} from 'react';
-import {View, Text, StyleSheet, Alert} from 'react-native';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
+import {View, Text, StyleSheet, Alert, AppState} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import Animated, {FadeInDown} from 'react-native-reanimated';
 import {useDispatch} from 'react-redux';
 import {Button, OTPInput, PressableScale} from '@components/common';
@@ -80,6 +82,42 @@ const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) =>
     if (v.length === OTP_LENGTH) handleVerify(v);
   };
 
+  // Auto-fill from the clipboard. WhatsApp and e-mail codes can't be read by the
+  // OS (only SMS can), so the practical zero-typing path is: the user copies the
+  // code, returns to the app, and we detect + submit it automatically. Runs on
+  // screen focus and whenever the app comes back to the foreground.
+  const lastAutoFilled = useRef('');
+  const checkClipboardForCode = useCallback(async () => {
+    if (isLoading) return;
+    try {
+      const text = await Clipboard.getString();
+      const digits = (text || '').replace(/\D/g, '');
+      if (digits.length === OTP_LENGTH && digits !== lastAutoFilled.current) {
+        lastAutoFilled.current = digits;
+        setCode(digits);
+        handleVerify(digits);
+      }
+    } catch {
+      // Clipboard unavailable — ignore and let the user type the code.
+    }
+    // handleVerify/isLoading intentionally omitted: guarded by the ref + isLoading check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
+
+  useEffect(() => {
+    checkClipboardForCode();
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') checkClipboardForCode();
+    });
+    return () => sub.remove();
+  }, [checkClipboardForCode]);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkClipboardForCode();
+    }, [checkClipboardForCode]),
+  );
+
   const handleResend = async () => {
     if (!canResend) return;
     try {
@@ -127,6 +165,10 @@ const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) =>
 
       <Animated.View entering={FadeInDown.duration(420)} style={s.card}>
         <OTPInput length={OTP_LENGTH} value={code} onChange={handleChange} />
+
+        <Text style={s.autofillHint}>
+          Astuce : copiez le code reçu, il se remplira automatiquement.
+        </Text>
 
         <View style={s.resend}>
           {canResend ? (
@@ -200,6 +242,7 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
       ...shadows.md,
       shadowColor: colors.shadowColor,
     },
+    autofillHint: {...typography.caption, color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md},
     resend: {alignItems: 'center', marginVertical: spacing.lg},
     resendLink: {...typography.bodyMedium, color: colors.accent.main, fontWeight: '700'},
     resendTimer: {...typography.body, color: colors.text.secondary},

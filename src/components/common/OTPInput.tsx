@@ -69,6 +69,11 @@ export const OTPInput: React.FC<OTPInputProps> = ({
         autoFocus={autoFocus}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
+        // OS-level one-time-code autofill (SMS only): iOS shows the code as a
+        // one-tap suggestion above the keyboard; Android can fill it via autofill.
+        textContentType="oneTimeCode"
+        autoComplete="sms-otp"
+        importantForAutofill="yes"
         style={s.hidden}
         caretHidden
       />
