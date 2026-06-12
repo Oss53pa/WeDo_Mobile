@@ -8,16 +8,6 @@ jest.mock('react-native-reanimated', () => {
 
 jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
 
-jest.mock('@react-native-firebase/messaging', () => ({
-  messaging: jest.fn(() => ({
-    hasPermission: jest.fn(() => Promise.resolve(true)),
-    subscribeToTopic: jest.fn(),
-    unsubscribeFromTopic: jest.fn(),
-    requestPermission: jest.fn(() => Promise.resolve(true)),
-    getToken: jest.fn(() => Promise.resolve('myMockToken')),
-  })),
-}));
-
 jest.mock('react-native-config', () => ({
   API_BASE_URL: 'https://api.test.com',
 }));

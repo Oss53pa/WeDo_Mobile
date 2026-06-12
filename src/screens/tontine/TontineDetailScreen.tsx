@@ -250,7 +250,7 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
                   variant="secondary"
                   fullWidth
                   icon="account-multiple-plus"
-                  onPress={() => rootNav.navigate('InviteTontine', {tontineId, tontineName: t.name})}
+                  onPress={() => rootNav.navigate('InviteTontine', {tontineId, tontineName: t.name, inviteCode: t.inviteCode})}
                   style={{marginTop: spacing.sm}}
                 />
               )}

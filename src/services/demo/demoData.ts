@@ -97,6 +97,7 @@ const baseTontine = (over: Partial<Tontine> & Pick<Tontine, 'id' | 'name'>): Ton
   minReputationRequired: 0,
   isPublic: false,
   depositAmount: 0,
+  inviteCode: 'WEDODEMO',
   createdAt: iso(-120),
   updatedAt: iso(-2),
   ...over,

@@ -22,7 +22,8 @@ export type RootStackParamList = {
   VoteDetail: {voteId: string};
   // New feature screens (registered at root level — reachable from anywhere)
   ManageTontine: {tontineId: string};
-  InviteTontine: {tontineId: string; tontineName?: string};
+  InviteTontine: {tontineId: string; tontineName?: string; inviteCode?: string};
+  JoinByCode: undefined;
   Kyc: undefined;
   // Trust layer (MVP)
   Registre: {tontineId: string};

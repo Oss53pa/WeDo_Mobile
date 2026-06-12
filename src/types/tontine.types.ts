@@ -72,6 +72,7 @@ export interface Tontine {
   isPublic: boolean;
   depositAmount: number;
   photoUrl?: string;
+  inviteCode?: string;
   createdAt: string;
   updatedAt: string;
 }

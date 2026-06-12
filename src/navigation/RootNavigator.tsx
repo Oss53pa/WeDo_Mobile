@@ -10,6 +10,7 @@ import AuthNavigator from './AuthNavigator';
 import MainTabNavigator from './MainTabNavigator';
 import ManageTontineScreen from '@screens/tontine/ManageTontineScreen';
 import InviteTontineScreen from '@screens/tontine/InviteTontineScreen';
+import JoinByCodeScreen from '@screens/tontine/JoinByCodeScreen';
 import MemberProfileScreen from '@screens/profile/MemberProfileScreen';
 import KycScreen from '@screens/profile/KycScreen';
 import KycP2Screen from '@screens/profile/KycP2Screen';
@@ -34,6 +35,7 @@ const RootNavigator: React.FC<RootNavigatorProps> = ({isAuthenticated}) => {
           {/* Feature screens reachable from anywhere via navigate(name) */}
           <Stack.Screen name="ManageTontine" component={ManageTontineScreen} />
           <Stack.Screen name="InviteTontine" component={InviteTontineScreen} />
+          <Stack.Screen name="JoinByCode" component={JoinByCodeScreen} />
           <Stack.Screen name="MemberProfile" component={MemberProfileScreen} />
           <Stack.Screen name="Kyc" component={KycScreen} />
           <Stack.Screen name="KycP2" component={KycP2Screen} />

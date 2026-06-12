@@ -23,7 +23,7 @@ import {
   PressableScale,
 } from '@components/common';
 import {TAB_BAR_SPACE} from '@components/navigation/CustomTabBar';
-import {SearchIcon, FilterIcon, CloseIcon} from '@components/icons';
+import {SearchIcon, FilterIcon, CloseIcon, QRCodeIcon} from '@components/icons';
 import {useTheme, useThemedStyles, typography, spacing, borderRadius, type ThemedTokens} from '@theme';
 import {TontinesStackParamList} from '@navigation/types';
 import {useTontines} from '@hooks';
@@ -139,8 +139,16 @@ const TontinesListScreen: React.FC<Props> = ({navigation}) => {
         ]}
         value={activeTab}
         onChange={v => setActiveTab(v as TabType)}
-        style={{marginBottom: spacing.md}}
+        style={{marginBottom: spacing.sm}}
       />
+
+      <PressableScale
+        style={s.joinCodeBtn}
+        onPress={() => (navigation as any).navigate('JoinByCode')}
+        testID="join-by-code-button">
+        <QRCodeIcon size={18} color={colors.accent.main} />
+        <Text style={s.joinCodeText}>J'ai un code d'invitation</Text>
+      </PressableScale>
 
       <View style={s.searchRow}>
         <View style={s.searchBox}>
@@ -275,6 +283,21 @@ const makeStyles = ({colors}: ThemedTokens) =>
     statValue: {...typography.h3, color: colors.accent.main, fontWeight: '800'},
     statLabel: {...typography.small, color: colors.text.secondary},
     statDivider: {width: 1, height: 26, backgroundColor: colors.border.default, marginHorizontal: spacing.md},
+    joinCodeBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      alignSelf: 'center',
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.md,
+      borderRadius: borderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.default,
+      marginBottom: spacing.md,
+    },
+    joinCodeText: {...typography.captionMedium, color: colors.accent.main, fontWeight: '700'},
     searchRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md},
     searchBox: {
       flex: 1,

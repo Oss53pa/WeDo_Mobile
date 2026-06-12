@@ -45,6 +45,7 @@ const mapTontine = (row: any): Tontine => ({
   isPublic: row.is_public,
   depositAmount: row.deposit_amount,
   photoUrl: row.photo_url || undefined,
+  inviteCode: row.invite_code || undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -346,6 +347,33 @@ export const rejoindreTontine = async (
   return data as any;
 };
 
+export interface JoinByCodeResult {
+  success: boolean;
+  error?: string;
+  need?: 'P2' | 'SCORE';
+  already?: boolean;
+  tontineId?: string;
+  tontineName?: string;
+}
+
+/**
+ * Join a tontine using its 8-char invitation code. Same trust gate as
+ * rejoindreTontine; also returns the resolved tontine id/name for navigation.
+ */
+export const rejoindreTontineParCode = async (
+  code: string,
+): Promise<JoinByCodeResult> => {
+  if (!IS_SUPABASE_CONFIGURED) {
+    const demo = demoPublicTontines[0];
+    return {success: true, tontineId: demo?.id, tontineName: demo?.name};
+  }
+  const {data, error} = await supabase.rpc('rejoindre_tontine_par_code', {
+    p_code: code,
+  });
+  if (error) throw new Error(error.message);
+  return data as JoinByCodeResult;
+};
+
 /**
  * Leave a tontine
  */
@@ -503,6 +531,7 @@ export default {
   deleteTontine,
   joinTontine,
   rejoindreTontine,
+  rejoindreTontineParCode,
   leaveTontine,
   inviteMembers,
   removeMember,

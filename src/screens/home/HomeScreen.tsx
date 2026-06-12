@@ -230,7 +230,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
             onPress={() => {
               const first = activeTontines[0];
               if (first) {
-                (navigation as any).navigate('InviteTontine', {tontineId: first.id, tontineName: first.name});
+                (navigation as any).navigate('InviteTontine', {tontineId: first.id, tontineName: first.name, inviteCode: first.inviteCode});
               } else {
                 navigation.navigate('Tontines', {screen: 'TontinesList'});
               }

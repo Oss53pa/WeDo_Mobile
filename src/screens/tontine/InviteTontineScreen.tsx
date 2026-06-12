@@ -2,7 +2,7 @@
  * InviteTontineScreen — share a tontine invitation: branded code, decorative
  * QR emblem and quick share actions (link / SMS / WhatsApp). Premium themed UI.
  */
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {View, Text, StyleSheet, ScrollView, Share, Alert} from 'react-native';
 import {RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -30,6 +30,7 @@ import {
 } from '@theme';
 import {RootStackParamList} from '@navigation/types';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import tontineApi from '@services/api/tontine.api';
 
 type Nav = StackNavigationProp<RootStackParamList, 'InviteTontine'>;
 type Route = RouteProp<RootStackParamList, 'InviteTontine'>;
@@ -44,26 +45,44 @@ const InviteTontineScreen: React.FC<{navigation: Nav; route: Route}> = ({
 
   const tontineId = route.params?.tontineId ?? '';
   const tontineName = route.params?.tontineName ?? 'votre tontine';
-  const link = `https://wedo.app/join/${tontineId}`;
-  const code =
-    tontineId.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) || 'WEDO2026';
+  const [inviteCode, setInviteCode] = useState(route.params?.inviteCode ?? '');
+
+  // The real invite code lives on the tontine row — fetch it when not passed in.
+  useEffect(() => {
+    if (inviteCode || !tontineId) return;
+    tontineApi
+      .getTontineDetail(tontineId)
+      .then(d => d?.inviteCode && setInviteCode(d.inviteCode))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tontineId]);
+
+  const code = inviteCode || '· · · ·';
+  const shareMessage =
+    `Rejoins ma tontine « ${tontineName} » sur WeDo !\n` +
+    `Code d'invitation : ${inviteCode}\n` +
+    `Dans l'app : Tontines → « J'ai un code d'invitation ».`;
 
   const shareLink = async (channel?: string) => {
+    if (!inviteCode) {
+      Alert.alert('Un instant', "Le code d'invitation est en cours de chargement.");
+      return;
+    }
     try {
       await Share.share({
-        message: `Rejoignez ma tontine sur WeDo : ${link}`,
+        message: shareMessage,
         title: 'Invitation WeDo',
       });
     } catch {
       Alert.alert(
         'Partage indisponible',
-        `Impossible d'ouvrir le partage${channel ? ` (${channel})` : ''}. Le lien reste disponible ci-dessous.`,
+        `Impossible d'ouvrir le partage${channel ? ` (${channel})` : ''}. Le code reste disponible ci-dessus.`,
       );
     }
   };
 
   const handleCopy = () => {
-    Alert.alert('Lien prêt à partager', link, [
+    Alert.alert('Code prêt à partager', code, [
       {text: 'Fermer', style: 'cancel'},
       {text: 'Partager', onPress: () => shareLink()},
     ]);
@@ -146,16 +165,16 @@ const InviteTontineScreen: React.FC<{navigation: Nav; route: Route}> = ({
           </View>
         </Animated.View>
 
-        {/* Shareable link */}
+        {/* Shareable code */}
         <Animated.View entering={FadeInDown.duration(360).delay(220)}>
           <Card variant="outline" padding={spacing.md} style={s.linkCard}>
             <View style={s.linkIcon}>
               <LinkIcon size={20} color={colors.brand.indigo} />
             </View>
             <View style={s.linkBody}>
-              <Text style={s.linkLabel}>Lien d'invitation</Text>
+              <Text style={s.linkLabel}>Code d'invitation</Text>
               <Text style={s.linkValue} selectable numberOfLines={1}>
-                {link}
+                {code}
               </Text>
             </View>
             <Button
