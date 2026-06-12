@@ -1,6 +1,6 @@
 /**
  * Auth Slice
- * Manages authentication state with Supabase Email-OTP flow
+ * Manages authentication state with Supabase passwordless OTP (e-mail or phone).
  */
 
 import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
@@ -22,6 +22,7 @@ interface AuthState {
   // OTP flow state
   otpSent: boolean;
   pendingEmail: string | null;
+  pendingPhone: string | null;
   // Security preferences
   biometricEnabled: boolean;
 }
@@ -34,40 +35,70 @@ const initialState: AuthState = {
   error: null,
   otpSent: false,
   pendingEmail: null,
+  pendingPhone: null,
   biometricEnabled: false,
 };
 
 // Async Thunks
 
-// Send OTP (for both login and registration)
+// Send OTP (for both login and registration, by email or phone).
+// `channel` defaults to 'email' to stay backward-compatible with existing callers.
 export const sendOtp = createAsyncThunk(
   'auth/sendOtp',
-  async (params: {email: string; fullName?: string; phone?: string}, {rejectWithValue}) => {
+  async (
+    params: {
+      channel?: 'email' | 'phone';
+      email?: string;
+      phone?: string;
+      fullName?: string;
+    },
+    {rejectWithValue},
+  ) => {
     try {
+      const channel = params.channel ?? 'email';
+      if (channel === 'phone') {
+        // Phone flow (SMS / WhatsApp)
+        if (params.fullName) {
+          await authApi.registerPhone({
+            phone: params.phone!,
+            fullName: params.fullName,
+            email: params.email,
+          });
+        } else {
+          await authApi.sendOtpPhone(params.phone!);
+        }
+        return {email: undefined, phone: params.phone};
+      }
+      // Email flow
       if (params.fullName) {
-        // Registration flow
         await authApi.register({
-          email: params.email,
+          email: params.email!,
           fullName: params.fullName,
           phone: params.phone,
         });
       } else {
-        // Login flow
-        await authApi.sendOtp(params.email);
+        await authApi.sendOtp(params.email!);
       }
-      return {email: params.email};
+      return {email: params.email, phone: undefined};
     } catch (error: any) {
       return rejectWithValue(error.message || "Échec de l'envoi du code OTP");
     }
   },
 );
 
-// Verify OTP
+// Verify OTP (by email or phone). `channel` defaults to 'email'.
 export const verifyOtp = createAsyncThunk(
   'auth/verifyOtp',
-  async (params: {email: string; token: string}, {rejectWithValue}) => {
+  async (
+    params: {channel?: 'email' | 'phone'; email?: string; phone?: string; token: string},
+    {rejectWithValue},
+  ) => {
     try {
-      const result = await authApi.verifyOtp(params.email, params.token);
+      const channel = params.channel ?? 'email';
+      const result =
+        channel === 'phone'
+          ? await authApi.verifyOtpPhone(params.phone!, params.token)
+          : await authApi.verifyOtp(params.email!, params.token);
       return result;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Code OTP invalide');
@@ -97,6 +128,7 @@ const authSlice = createSlice({
     clearOtpState: state => {
       state.otpSent = false;
       state.pendingEmail = null;
+      state.pendingPhone = null;
     },
 
     // Restore session from Supabase onAuthStateChange
@@ -114,6 +146,7 @@ const authSlice = createSlice({
       state.error = null;
       state.otpSent = false;
       state.pendingEmail = null;
+      state.pendingPhone = null;
       state.isRestoring = false;
     },
 
@@ -166,7 +199,8 @@ const authSlice = createSlice({
       .addCase(sendOtp.fulfilled, (state, action) => {
         state.isLoading = false;
         state.otpSent = true;
-        state.pendingEmail = action.payload.email;
+        state.pendingEmail = action.payload.email ?? null;
+        state.pendingPhone = action.payload.phone ?? null;
         state.error = null;
       })
       .addCase(sendOtp.rejected, (state, action) => {
@@ -186,6 +220,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.otpSent = false;
         state.pendingEmail = null;
+        state.pendingPhone = null;
         state.error = null;
       })
       .addCase(verifyOtp.rejected, (state, action) => {
@@ -205,6 +240,7 @@ const authSlice = createSlice({
         state.error = null;
         state.otpSent = false;
         state.pendingEmail = null;
+        state.pendingPhone = null;
       })
       .addCase(logout.rejected, (state, action) => {
         state.isLoading = false;

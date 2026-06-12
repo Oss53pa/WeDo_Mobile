@@ -1,27 +1,40 @@
 /**
  * Verify OTP Screen — 6-digit code verification (Supabase). Premium themed UI.
  */
-import React, {useState, useEffect} from 'react';
-import {View, Text, StyleSheet, Alert} from 'react-native';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
+import {View, Text, StyleSheet, Alert, AppState} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import Animated, {FadeInDown} from 'react-native-reanimated';
 import {useDispatch} from 'react-redux';
 import {Button, OTPInput, PressableScale} from '@components/common';
 import {GradientView} from '@components/common';
 import {PatternBackground} from '@components/patterns';
-import {ChevronLeftIcon, MailIcon} from '@components/icons';
+import {ChevronLeftIcon, MailIcon, MessageIcon} from '@components/icons';
 import {useTheme, useThemedStyles, typography, spacing, borderRadius, fontFamily, type ThemedTokens} from '@theme';
 import {AuthStackScreenProps} from '@navigation/types';
 import {verifyOtp, sendOtp} from '@store/slices/auth.slice';
 import {AppDispatch} from '@store/store';
+import {DEFAULTS, AUTH_CONFIG} from '@config';
 
 type VerifyOTPScreenProps = AuthStackScreenProps<'VerifyOTP'>;
 
-const OTP_LENGTH = 6;
+// Single source of truth — must match the Supabase "Email OTP Length" setting.
+const OTP_LENGTH = DEFAULTS.OTP_LENGTH;
 const RESEND_TIMEOUT = 60;
 
 const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) => {
-  const {email} = route.params;
+  const {email, phone} = route.params;
+  // Phone OTP when a phone number was passed, otherwise the e-mail flow.
+  const channel: 'email' | 'phone' = phone ? 'phone' : 'email';
+  const destination = phone ?? email ?? '';
+  const channelLabel =
+    channel === 'phone'
+      ? AUTH_CONFIG.phoneOtpChannel === 'whatsapp'
+        ? 'sur WhatsApp'
+        : 'par SMS'
+      : 'à';
   const dispatch = useDispatch<AppDispatch>();
   const {colors} = useTheme();
   const s = useThemedStyles(makeStyles);
@@ -49,12 +62,12 @@ const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) =>
   const handleVerify = async (value?: string) => {
     const c = value ?? code;
     if (c.length !== OTP_LENGTH) {
-      Alert.alert('Code invalide', 'Veuillez entrer les 6 chiffres du code');
+      Alert.alert('Code invalide', `Veuillez entrer les ${OTP_LENGTH} chiffres du code`);
       return;
     }
     setIsLoading(true);
     try {
-      await dispatch(verifyOtp({email, token: c})).unwrap();
+      await dispatch(verifyOtp({channel, email, phone, token: c})).unwrap();
       // Auth state change in App.tsx handles navigation
     } catch (error: any) {
       Alert.alert('Code incorrect', error || 'Le code est invalide. Veuillez réessayer.');
@@ -69,11 +82,52 @@ const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) =>
     if (v.length === OTP_LENGTH) handleVerify(v);
   };
 
+  // Auto-fill from the clipboard. WhatsApp and e-mail codes can't be read by the
+  // OS (only SMS can), so the practical zero-typing path is: the user copies the
+  // code, returns to the app, and we detect + submit it automatically. Runs on
+  // screen focus and whenever the app comes back to the foreground.
+  const lastAutoFilled = useRef('');
+  const checkClipboardForCode = useCallback(async () => {
+    if (isLoading) return;
+    try {
+      const text = await Clipboard.getString();
+      const digits = (text || '').replace(/\D/g, '');
+      if (digits.length === OTP_LENGTH && digits !== lastAutoFilled.current) {
+        lastAutoFilled.current = digits;
+        setCode(digits);
+        handleVerify(digits);
+      }
+    } catch {
+      // Clipboard unavailable — ignore and let the user type the code.
+    }
+    // handleVerify/isLoading intentionally omitted: guarded by the ref + isLoading check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
+
+  useEffect(() => {
+    checkClipboardForCode();
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') checkClipboardForCode();
+    });
+    return () => sub.remove();
+  }, [checkClipboardForCode]);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkClipboardForCode();
+    }, [checkClipboardForCode]),
+  );
+
   const handleResend = async () => {
     if (!canResend) return;
     try {
-      await dispatch(sendOtp({email})).unwrap();
-      Alert.alert('Code renvoyé', 'Un nouveau code a été envoyé à votre e-mail');
+      await dispatch(sendOtp({channel, email, phone})).unwrap();
+      Alert.alert(
+        'Code renvoyé',
+        channel === 'phone'
+          ? `Un nouveau code a été envoyé ${channelLabel}`
+          : 'Un nouveau code a été envoyé à votre e-mail',
+      );
       setResendTimer(RESEND_TIMEOUT);
       setCanResend(false);
       setCode('');
@@ -96,17 +150,25 @@ const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) =>
           <View style={{width: 44}} />
         </View>
         <View style={s.heroIcon}>
-          <MailIcon size={40} color="#FFFFFF" />
+          {channel === 'phone' ? (
+            <MessageIcon size={40} color="#FFFFFF" />
+          ) : (
+            <MailIcon size={40} color="#FFFFFF" />
+          )}
         </View>
         <Text style={s.heroTitle}>Vérification</Text>
         <Text style={s.heroSubtitle}>
-          Entrez le code à 6 chiffres envoyé à{'\n'}
-          <Text style={s.phone}>{email}</Text>
+          Entrez le code à {OTP_LENGTH} chiffres envoyé {channelLabel}{'\n'}
+          <Text style={s.phone}>{destination}</Text>
         </Text>
       </GradientView>
 
       <Animated.View entering={FadeInDown.duration(420)} style={s.card}>
         <OTPInput length={OTP_LENGTH} value={code} onChange={handleChange} />
+
+        <Text style={s.autofillHint}>
+          Astuce : copiez le code reçu, il se remplira automatiquement.
+        </Text>
 
         <View style={s.resend}>
           {canResend ? (
@@ -180,6 +242,7 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
       ...shadows.md,
       shadowColor: colors.shadowColor,
     },
+    autofillHint: {...typography.caption, color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md},
     resend: {alignItems: 'center', marginVertical: spacing.lg},
     resendLink: {...typography.bodyMedium, color: colors.accent.main, fontWeight: '700'},
     resendTimer: {...typography.body, color: colors.text.secondary},

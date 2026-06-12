@@ -420,6 +420,19 @@ export const RATE_LIMIT_CONFIG = {
 };
 
 /**
+ * Authentication Configuration
+ */
+export const AUTH_CONFIG = {
+  /**
+   * Channel used to deliver phone OTP codes. Phone auth requires a Twilio
+   * (or Twilio Verify) provider configured in the Supabase dashboard.
+   * 'whatsapp' is usually cheaper and more reliable in West Africa; switch to
+   * 'sms' for classic SMS. Email OTP stays available regardless of this value.
+   */
+  phoneOtpChannel: 'whatsapp' as 'whatsapp' | 'sms',
+};
+
+/**
  * Default Configuration
  */
 export const DEFAULT_CONFIG = {
@@ -444,6 +457,7 @@ export default {
   CACHE_CONFIG,
   NETWORK_CONFIG,
   VALIDATION_RULES,
+  AUTH_CONFIG,
   DATE_TIME_CONFIG,
   PAYMENT_METHODS,
   NOTIFICATION_CONFIG,

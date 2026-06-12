@@ -1,5 +1,5 @@
 /**
- * Login Screen — phone number → OTP (Supabase). Premium themed UI.
+ * Login Screen — e-mail or phone → OTP (Supabase). Premium themed UI.
  */
 import React, {useState} from 'react';
 import {
@@ -14,10 +14,10 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Animated, {FadeInDown} from 'react-native-reanimated';
 import {useDispatch} from 'react-redux';
-import {Button, Input, PressableScale} from '@components/common';
+import {Button, Input, PressableScale, SegmentedControl} from '@components/common';
 import {GradientView} from '@components/common';
 import {PatternBackground} from '@components/patterns';
-import {ChevronLeftIcon, MailIcon} from '@components/icons';
+import {ChevronLeftIcon, MailIcon, PhoneIcon} from '@components/icons';
 import {useTheme, useThemedStyles, typography, spacing, borderRadius, fontFamily, type ThemedTokens} from '@theme';
 import {AuthStackScreenProps} from '@navigation/types';
 import {sendOtp} from '@store/slices/auth.slice';
@@ -25,38 +25,52 @@ import {AppDispatch} from '@store/store';
 
 type LoginScreenProps = AuthStackScreenProps<'Login'>;
 
+type Method = 'email' | 'phone';
+
 const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
   const dispatch = useDispatch<AppDispatch>();
   const {colors} = useTheme();
   const s = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
 
+  const [method, setMethod] = useState<Method>('email');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [emailError, setEmailError] = useState('');
+  const [error, setError] = useState('');
 
-  const validate = (value: string): boolean => {
-    setEmailError('');
+  const validateEmail = (value: string): boolean => {
+    setError('');
     const v = value.trim();
-    if (!v) {
-      setEmailError("L'adresse e-mail est requise");
-      return false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
-      setEmailError('Adresse e-mail invalide');
-      return false;
-    }
+    if (!v) return setError("L'adresse e-mail est requise"), false;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return setError('Adresse e-mail invalide'), false;
+    return true;
+  };
+
+  const validatePhone = (value: string): boolean => {
+    setError('');
+    const v = value.replace(/[^\d+]/g, '');
+    if (!v) return setError('Le numéro de téléphone est requis'), false;
+    // E.164: leading "+" then country code + number (8 to 15 digits).
+    if (!/^\+[1-9]\d{7,14}$/.test(v))
+      return setError("Entrez le numéro au format international, ex. +225 07 12 34 56 78"), false;
     return true;
   };
 
   const handleLogin = async () => {
-    if (!validate(email)) return;
+    const ok = method === 'email' ? validateEmail(email) : validatePhone(phone);
+    if (!ok) return;
     setIsLoading(true);
     try {
-      await dispatch(sendOtp({email})).unwrap();
-      navigation.navigate('VerifyOTP', {email});
-    } catch (error: any) {
-      Alert.alert('Erreur', error || "Impossible d'envoyer le code. Veuillez réessayer.");
+      if (method === 'phone') {
+        await dispatch(sendOtp({channel: 'phone', phone})).unwrap();
+        navigation.navigate('VerifyOTP', {phone});
+      } else {
+        await dispatch(sendOtp({email})).unwrap();
+        navigation.navigate('VerifyOTP', {email});
+      }
+    } catch (err: any) {
+      Alert.alert('Erreur', err || "Impossible d'envoyer le code. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
     }
@@ -80,24 +94,64 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
 
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
         <Animated.View entering={FadeInDown.duration(420)} style={s.card}>
-          <Text style={s.label}>Entrez votre e-mail</Text>
-          <Text style={s.hint}>Nous vous enverrons un code de vérification par e-mail.</Text>
-          <Input
-            placeholder="vous@example.com"
-            value={email}
-            onChangeText={t => {
-              setEmail(t);
-              setEmailError('');
+          <SegmentedControl<Method>
+            options={[
+              {label: 'E-mail', value: 'email'},
+              {label: 'Téléphone', value: 'phone'},
+            ]}
+            value={method}
+            onChange={m => {
+              setMethod(m);
+              setError('');
             }}
-            type="email"
-            leftNode={<MailIcon size={20} color={colors.text.tertiary} />}
-            error={emailError}
-            autoCapitalize="none"
-            maxLength={120}
-            autoFocus
-            containerStyle={{marginTop: spacing.md}}
-            testID="email-input"
+            style={{marginBottom: spacing.md}}
           />
+
+          {method === 'email' ? (
+            <>
+              <Text style={s.label}>Entrez votre e-mail</Text>
+              <Text style={s.hint}>Nous vous enverrons un code de vérification par e-mail.</Text>
+              <Input
+                placeholder="vous@example.com"
+                value={email}
+                onChangeText={t => {
+                  setEmail(t);
+                  setError('');
+                }}
+                type="email"
+                leftNode={<MailIcon size={20} color={colors.text.tertiary} />}
+                error={error}
+                autoCapitalize="none"
+                maxLength={120}
+                autoFocus
+                containerStyle={{marginTop: spacing.md}}
+                testID="email-input"
+              />
+            </>
+          ) : (
+            <>
+              <Text style={s.label}>Entrez votre numéro</Text>
+              <Text style={s.hint}>
+                Nous vous enverrons un code de vérification. Indiquez l'indicatif pays (ex. +225).
+              </Text>
+              <Input
+                placeholder="+225 07 12 34 56 78"
+                value={phone}
+                onChangeText={t => {
+                  setPhone(t);
+                  setError('');
+                }}
+                type="phone"
+                leftNode={<PhoneIcon size={20} color={colors.text.tertiary} />}
+                error={error}
+                maxLength={20}
+                autoFocus
+                containerStyle={{marginTop: spacing.md}}
+                testID="phone-input"
+              />
+            </>
+          )}
+
           <Button
             title="Envoyer le code"
             onPress={handleLogin}
