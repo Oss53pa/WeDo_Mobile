@@ -14,10 +14,12 @@ import {useTheme, useThemedStyles, typography, spacing, borderRadius, fontFamily
 import {AuthStackScreenProps} from '@navigation/types';
 import {verifyOtp, sendOtp} from '@store/slices/auth.slice';
 import {AppDispatch} from '@store/store';
+import {DEFAULTS} from '@config';
 
 type VerifyOTPScreenProps = AuthStackScreenProps<'VerifyOTP'>;
 
-const OTP_LENGTH = 6;
+// Single source of truth — must match the Supabase "Email OTP Length" setting.
+const OTP_LENGTH = DEFAULTS.OTP_LENGTH;
 const RESEND_TIMEOUT = 60;
 
 const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) => {
@@ -49,7 +51,7 @@ const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) =>
   const handleVerify = async (value?: string) => {
     const c = value ?? code;
     if (c.length !== OTP_LENGTH) {
-      Alert.alert('Code invalide', 'Veuillez entrer les 6 chiffres du code');
+      Alert.alert('Code invalide', `Veuillez entrer les ${OTP_LENGTH} chiffres du code`);
       return;
     }
     setIsLoading(true);
@@ -100,7 +102,7 @@ const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) =>
         </View>
         <Text style={s.heroTitle}>Vérification</Text>
         <Text style={s.heroSubtitle}>
-          Entrez le code à 6 chiffres envoyé à{'\n'}
+          Entrez le code à {OTP_LENGTH} chiffres envoyé à{'\n'}
           <Text style={s.phone}>{email}</Text>
         </Text>
       </GradientView>
