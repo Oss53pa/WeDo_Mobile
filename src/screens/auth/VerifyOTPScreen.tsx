@@ -9,12 +9,12 @@ import {useDispatch} from 'react-redux';
 import {Button, OTPInput, PressableScale} from '@components/common';
 import {GradientView} from '@components/common';
 import {PatternBackground} from '@components/patterns';
-import {ChevronLeftIcon, MailIcon} from '@components/icons';
+import {ChevronLeftIcon, MailIcon, MessageIcon} from '@components/icons';
 import {useTheme, useThemedStyles, typography, spacing, borderRadius, fontFamily, type ThemedTokens} from '@theme';
 import {AuthStackScreenProps} from '@navigation/types';
 import {verifyOtp, sendOtp} from '@store/slices/auth.slice';
 import {AppDispatch} from '@store/store';
-import {DEFAULTS} from '@config';
+import {DEFAULTS, AUTH_CONFIG} from '@config';
 
 type VerifyOTPScreenProps = AuthStackScreenProps<'VerifyOTP'>;
 
@@ -23,7 +23,16 @@ const OTP_LENGTH = DEFAULTS.OTP_LENGTH;
 const RESEND_TIMEOUT = 60;
 
 const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) => {
-  const {email} = route.params;
+  const {email, phone} = route.params;
+  // Phone OTP when a phone number was passed, otherwise the e-mail flow.
+  const channel: 'email' | 'phone' = phone ? 'phone' : 'email';
+  const destination = phone ?? email ?? '';
+  const channelLabel =
+    channel === 'phone'
+      ? AUTH_CONFIG.phoneOtpChannel === 'whatsapp'
+        ? 'sur WhatsApp'
+        : 'par SMS'
+      : 'à';
   const dispatch = useDispatch<AppDispatch>();
   const {colors} = useTheme();
   const s = useThemedStyles(makeStyles);
@@ -56,7 +65,7 @@ const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) =>
     }
     setIsLoading(true);
     try {
-      await dispatch(verifyOtp({email, token: c})).unwrap();
+      await dispatch(verifyOtp({channel, email, phone, token: c})).unwrap();
       // Auth state change in App.tsx handles navigation
     } catch (error: any) {
       Alert.alert('Code incorrect', error || 'Le code est invalide. Veuillez réessayer.');
@@ -74,8 +83,13 @@ const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) =>
   const handleResend = async () => {
     if (!canResend) return;
     try {
-      await dispatch(sendOtp({email})).unwrap();
-      Alert.alert('Code renvoyé', 'Un nouveau code a été envoyé à votre e-mail');
+      await dispatch(sendOtp({channel, email, phone})).unwrap();
+      Alert.alert(
+        'Code renvoyé',
+        channel === 'phone'
+          ? `Un nouveau code a été envoyé ${channelLabel}`
+          : 'Un nouveau code a été envoyé à votre e-mail',
+      );
       setResendTimer(RESEND_TIMEOUT);
       setCanResend(false);
       setCode('');
@@ -98,12 +112,16 @@ const VerifyOTPScreen: React.FC<VerifyOTPScreenProps> = ({route, navigation}) =>
           <View style={{width: 44}} />
         </View>
         <View style={s.heroIcon}>
-          <MailIcon size={40} color="#FFFFFF" />
+          {channel === 'phone' ? (
+            <MessageIcon size={40} color="#FFFFFF" />
+          ) : (
+            <MailIcon size={40} color="#FFFFFF" />
+          )}
         </View>
         <Text style={s.heroTitle}>Vérification</Text>
         <Text style={s.heroSubtitle}>
-          Entrez le code à {OTP_LENGTH} chiffres envoyé à{'\n'}
-          <Text style={s.phone}>{email}</Text>
+          Entrez le code à {OTP_LENGTH} chiffres envoyé {channelLabel}{'\n'}
+          <Text style={s.phone}>{destination}</Text>
         </Text>
       </GradientView>
 

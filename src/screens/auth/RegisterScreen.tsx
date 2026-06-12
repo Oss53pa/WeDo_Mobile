@@ -14,7 +14,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Animated, {FadeInDown} from 'react-native-reanimated';
 import {useDispatch} from 'react-redux';
-import {Button, Input, ProgressBar, PressableScale} from '@components/common';
+import {Button, Input, ProgressBar, PressableScale, SegmentedControl} from '@components/common';
 import {GradientView} from '@components/common';
 import {PatternBackground} from '@components/patterns';
 import {ChevronLeftIcon} from '@components/icons';
@@ -23,8 +23,11 @@ import {AuthStackScreenProps} from '@navigation/types';
 import {sendOtp} from '@store/slices/auth.slice';
 import {AppDispatch} from '@store/store';
 import {VALIDATION} from '@constants';
+import {AUTH_CONFIG} from '@config';
 
 type RegisterScreenProps = AuthStackScreenProps<'Register'>;
+
+type Method = 'email' | 'phone';
 
 const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
   const dispatch = useDispatch<AppDispatch>();
@@ -32,6 +35,9 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
   const s = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
 
+  // Primary identifier for the account: e-mail or phone. The other field stays
+  // optional, so a user without an e-mail can register with their phone only.
+  const [method, setMethod] = useState<Method>('email');
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
@@ -47,27 +53,46 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
       return setNameError(`Au moins ${VALIDATION.NAME_MIN_LENGTH} caractères`), false;
     return true;
   };
-  const validatePhone = (phone: string) => {
+  const validatePhone = (phone: string, required: boolean) => {
     setPhoneError('');
-    // Phone is optional with email auth — only validate when provided.
-    if (phone && phone.length < VALIDATION.PHONE_NUMBER_MIN_LENGTH)
-      return setPhoneError('Numéro de téléphone invalide'), false;
+    const v = phone.replace(/[^\d+]/g, '');
+    if (!v) {
+      if (required) return setPhoneError('Le numéro de téléphone est requis'), false;
+      return true;
+    }
+    // E.164: leading "+" then country code + number (8 to 15 digits).
+    if (!/^\+[1-9]\d{7,14}$/.test(v))
+      return setPhoneError('Format international requis, ex. +225 07 12 34 56 78'), false;
     return true;
   };
-  const validateEmail = (v: string) => {
+  const validateEmail = (v: string, required: boolean) => {
     setEmailError('');
-    if (!v) return setEmailError("L'adresse e-mail est requise"), false;
+    if (!v) {
+      if (required) return setEmailError("L'adresse e-mail est requise"), false;
+      return true;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return setEmailError('Adresse e-mail invalide'), false;
     return true;
   };
 
   const handleRegister = async () => {
-    const ok = [validateName(fullName), validateEmail(email), validatePhone(phoneNumber)].every(Boolean);
+    const ok = [
+      validateName(fullName),
+      validateEmail(email, method === 'email'),
+      validatePhone(phoneNumber, method === 'phone'),
+    ].every(Boolean);
     if (!ok) return;
     setIsLoading(true);
     try {
-      await dispatch(sendOtp({email, fullName, phone: phoneNumber || undefined})).unwrap();
-      navigation.navigate('VerifyOTP', {email});
+      if (method === 'phone') {
+        await dispatch(
+          sendOtp({channel: 'phone', phone: phoneNumber, fullName, email: email || undefined}),
+        ).unwrap();
+        navigation.navigate('VerifyOTP', {phone: phoneNumber});
+      } else {
+        await dispatch(sendOtp({email, fullName, phone: phoneNumber || undefined})).unwrap();
+        navigation.navigate('VerifyOTP', {email});
+      }
     } catch (error: any) {
       Alert.alert("Erreur d'inscription", error || 'Impossible de créer le compte. Veuillez réessayer.');
     } finally {
@@ -97,6 +122,21 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
             <Text style={s.step}>Étape 1 sur 2</Text>
           </View>
 
+          <Text style={s.methodLabel}>Méthode de vérification</Text>
+          <SegmentedControl<Method>
+            options={[
+              {label: 'E-mail', value: 'email'},
+              {label: 'Téléphone', value: 'phone'},
+            ]}
+            value={method}
+            onChange={m => {
+              setMethod(m);
+              setEmailError('');
+              setPhoneError('');
+            }}
+            style={{marginBottom: spacing.md}}
+          />
+
           <Input
             label="Nom complet"
             placeholder="Jean Kouassi"
@@ -112,36 +152,76 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
             autoFocus
             testID="fullname-input"
           />
-          <Input
-            label="Adresse e-mail"
-            placeholder="jean.kouassi@example.com"
-            value={email}
-            onChangeText={t => {
-              setEmail(t);
-              setEmailError('');
-            }}
-            type="email"
-            leftIcon="email"
-            error={emailError}
-            helperText="Un code de vérification vous sera envoyé par e-mail"
-            maxLength={120}
-            required
-            testID="email-input"
-          />
-          <Input
-            label="Numéro de téléphone (optionnel)"
-            placeholder="+225 07 12 34 56 78"
-            value={phoneNumber}
-            onChangeText={t => {
-              setPhoneNumber(t);
-              setPhoneError('');
-            }}
-            type="phone"
-            leftIcon="phone"
-            error={phoneError}
-            maxLength={20}
-            testID="phone-input"
-          />
+
+          {method === 'phone' ? (
+            <>
+              <Input
+                label="Numéro de téléphone"
+                placeholder="+225 07 12 34 56 78"
+                value={phoneNumber}
+                onChangeText={t => {
+                  setPhoneNumber(t);
+                  setPhoneError('');
+                }}
+                type="phone"
+                leftIcon="phone"
+                error={phoneError}
+                helperText={`Un code de vérification vous sera envoyé ${
+                  AUTH_CONFIG.phoneOtpChannel === 'whatsapp' ? 'sur WhatsApp' : 'par SMS'
+                }. Indiquez l'indicatif pays (ex. +225).`}
+                maxLength={20}
+                required
+                testID="phone-input"
+              />
+              <Input
+                label="Adresse e-mail (optionnel)"
+                placeholder="jean.kouassi@example.com"
+                value={email}
+                onChangeText={t => {
+                  setEmail(t);
+                  setEmailError('');
+                }}
+                type="email"
+                leftIcon="email"
+                error={emailError}
+                maxLength={120}
+                testID="email-input"
+              />
+            </>
+          ) : (
+            <>
+              <Input
+                label="Adresse e-mail"
+                placeholder="jean.kouassi@example.com"
+                value={email}
+                onChangeText={t => {
+                  setEmail(t);
+                  setEmailError('');
+                }}
+                type="email"
+                leftIcon="email"
+                error={emailError}
+                helperText="Un code de vérification vous sera envoyé par e-mail"
+                maxLength={120}
+                required
+                testID="email-input"
+              />
+              <Input
+                label="Numéro de téléphone (optionnel)"
+                placeholder="+225 07 12 34 56 78"
+                value={phoneNumber}
+                onChangeText={t => {
+                  setPhoneNumber(t);
+                  setPhoneError('');
+                }}
+                type="phone"
+                leftIcon="phone"
+                error={phoneError}
+                maxLength={20}
+                testID="phone-input"
+              />
+            </>
+          )}
 
           <Button
             title="Continuer"
@@ -210,6 +290,7 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     },
     progressRow: {marginBottom: spacing.lg},
     step: {...typography.caption, color: colors.text.secondary, marginTop: spacing.xs, textAlign: 'right'},
+    methodLabel: {...typography.captionMedium, color: colors.text.secondary, marginBottom: spacing.xs, fontWeight: '600'},
     terms: {...typography.caption, color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md, lineHeight: 18},
     termsLink: {color: colors.accent.main, fontWeight: '600'},
     footer: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.lg, gap: 6},

@@ -15,7 +15,7 @@ import {
 export const useAuth = () => {
   const dispatch = useDispatch<AppDispatch>();
 
-  const {user, isAuthenticated, isLoading, error, otpSent, pendingEmail} =
+  const {user, isAuthenticated, isLoading, error, otpSent, pendingEmail, pendingPhone} =
     useSelector((state: RootState) => state.auth);
 
   return {
@@ -25,10 +25,19 @@ export const useAuth = () => {
     error,
     otpSent,
     pendingEmail,
-    sendOtp: (params: {email: string; fullName?: string; phone?: string}) =>
-      dispatch(sendOtp(params)).unwrap(),
-    verifyOtp: (params: {email: string; token: string}) =>
-      dispatch(verifyOtp(params)).unwrap(),
+    pendingPhone,
+    sendOtp: (params: {
+      channel?: 'email' | 'phone';
+      email?: string;
+      phone?: string;
+      fullName?: string;
+    }) => dispatch(sendOtp(params)).unwrap(),
+    verifyOtp: (params: {
+      channel?: 'email' | 'phone';
+      email?: string;
+      phone?: string;
+      token: string;
+    }) => dispatch(verifyOtp(params)).unwrap(),
     logout: () => dispatch(logout()).unwrap(),
     demoLogin: () => dispatch(demoLogin()),
     clearError: () => dispatch(clearError()),

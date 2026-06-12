@@ -1,12 +1,59 @@
 /**
  * Auth API Service
- * Handles all authentication via Supabase Auth (Email OTP — free).
- * A 6-digit code is emailed to the user; verify it with type: 'email'.
- * Requires the Supabase "Magic Link" email template to expose {{ .Token }}.
+ * Handles authentication via Supabase Auth with two passwordless methods:
+ *  - Email OTP (free): a code is emailed; verify with type: 'email'.
+ *    Requires the Supabase "Magic Link" email template to expose {{ .Token }}.
+ *  - Phone OTP: a code is sent by SMS or WhatsApp; verify with type: 'sms'.
+ *    Requires a Twilio (Verify) provider configured in the Supabase dashboard.
+ *    The delivery channel is set via AUTH_CONFIG.phoneOtpChannel.
  */
 
 import {supabase} from '@services/supabase';
+import {AUTH_CONFIG} from '@config/appConfig';
 import {User} from '@types';
+
+/**
+ * Normalise a phone number to the E.164-ish shape Supabase expects: keep the
+ * leading "+" and digits only (strips spaces, dots, dashes, parentheses).
+ * The user must include the country code (e.g. +225, +221).
+ */
+const normalizePhone = (phone: string): string => phone.replace(/[^\d+]/g, '');
+
+/**
+ * Map a Supabase auth user id to our app User by reading its profile row.
+ * Shared by the email and phone verification flows.
+ */
+const fetchUserProfile = async (
+  userId: string,
+  session: any,
+): Promise<{user: User; session: any}> => {
+  const {data: profile, error: profileError} = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (profileError) throw new Error(profileError.message);
+
+  const user: User = {
+    id: profile.id,
+    phoneNumber: profile.phone_number,
+    fullName: profile.full_name,
+    email: profile.email || undefined,
+    profilePhotoUrl: profile.profile_photo_url || undefined,
+    reputationScore: profile.reputation_score,
+    reputationLevel: profile.reputation_level as any,
+    kycLevel: profile.kyc_level as any,
+    isVerified: profile.is_verified,
+    city: profile.city || undefined,
+    region: profile.region || undefined,
+    dateOfBirth: profile.date_of_birth || undefined,
+    createdAt: profile.created_at,
+    updatedAt: profile.updated_at,
+  };
+
+  return {user, session};
+};
 
 /**
  * Maps Supabase OTP-send errors to French. The 60s anti-spam cooldown
@@ -61,33 +108,70 @@ export const verifyOtp = async (
     throw new Error(error.message);
   }
 
-  // Fetch profile
-  const {data: profile, error: profileError} = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', data.user!.id)
-    .single();
+  return fetchUserProfile(data.user!.id, data.session);
+};
 
-  if (profileError) throw new Error(profileError.message);
+/**
+ * Send a one-time code to a phone number (login). Delivered by SMS or WhatsApp
+ * depending on AUTH_CONFIG.phoneOtpChannel. Requires a Twilio provider in Supabase.
+ */
+export const sendOtpPhone = async (phone: string): Promise<{success: boolean}> => {
+  const {error} = await supabase.auth.signInWithOtp({
+    phone: normalizePhone(phone),
+    options: {shouldCreateUser: true, channel: AUTH_CONFIG.phoneOtpChannel},
+  });
+  return handleOtpSendError(error);
+};
 
-  const user: User = {
-    id: profile.id,
-    phoneNumber: profile.phone_number,
-    fullName: profile.full_name,
-    email: profile.email || undefined,
-    profilePhotoUrl: profile.profile_photo_url || undefined,
-    reputationScore: profile.reputation_score,
-    reputationLevel: profile.reputation_level as any,
-    kycLevel: profile.kyc_level as any,
-    isVerified: profile.is_verified,
-    city: profile.city || undefined,
-    region: profile.region || undefined,
-    dateOfBirth: profile.date_of_birth || undefined,
-    createdAt: profile.created_at,
-    updatedAt: profile.updated_at,
-  };
+/**
+ * Register a new user by phone (phone OTP + profile metadata). Email is optional.
+ */
+export const registerPhone = async (data: {
+  phone: string;
+  fullName: string;
+  email?: string;
+}): Promise<{success: boolean}> => {
+  const {error} = await supabase.auth.signInWithOtp({
+    phone: normalizePhone(data.phone),
+    options: {
+      shouldCreateUser: true,
+      channel: AUTH_CONFIG.phoneOtpChannel,
+      data: {
+        full_name: data.fullName,
+        email: data.email,
+      },
+    },
+  });
+  return handleOtpSendError(error);
+};
 
-  return {user, session: data.session};
+/**
+ * Verify the phone OTP code (type 'sms' applies to both SMS and WhatsApp delivery).
+ */
+export const verifyOtpPhone = async (
+  phone: string,
+  token: string,
+): Promise<{user: User; session: any}> => {
+  const {data, error} = await supabase.auth.verifyOtp({
+    phone: normalizePhone(phone),
+    token,
+    type: 'sms',
+  });
+  if (error) {
+    if (/expired|invalid/i.test(error.message || '')) {
+      throw new Error('Code invalide ou expiré. Demandez un nouveau code.');
+    }
+    throw new Error(error.message);
+  }
+
+  return fetchUserProfile(data.user!.id, data.session);
+};
+
+/**
+ * Resend OTP code to a phone number
+ */
+export const resendOtpPhone = async (phone: string): Promise<{success: boolean}> => {
+  return sendOtpPhone(phone);
 };
 
 /**
@@ -151,6 +235,10 @@ export default {
   verifyOtp,
   register,
   resendOtp,
+  sendOtpPhone,
+  registerPhone,
+  verifyOtpPhone,
+  resendOtpPhone,
   logout,
   getSession,
   getCurrentUser,

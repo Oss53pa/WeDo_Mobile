@@ -35,7 +35,7 @@ export type AuthStackParamList = {
   Welcome: undefined;
   Login: undefined;
   Register: undefined;
-  VerifyOTP: {email: string};
+  VerifyOTP: {email?: string; phone?: string};
   CreatePIN: {email: string; fullName: string};
   SetupBiometric: undefined;
   LinkMobileMoney: undefined;
