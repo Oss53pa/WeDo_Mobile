@@ -10,6 +10,8 @@
     "userInterfaceStyle": "automatic",
     "jsEngine": "hermes",
     "newArchEnabled": false,
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": { "fallbackToCacheTimeout": 0 },
     "assetBundlePatterns": ["**/*"],
     "icon": "./assets/icon.png",
     "plugins": [

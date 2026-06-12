@@ -1,0 +1,37 @@
+name: Build APK (EAS, OTA-enabled)
+
+# Builds an OTA-enabled APK on EAS (Expo cloud). Unlike the self-hosted
+# "Android APK" workflow, this APK embeds the EAS Update channel ("preview"),
+# so it can pull over-the-air JS updates published by "OTA Update (EAS Update)".
+#
+# Run this when you change NATIVE code/deps (e.g. a new native module), then
+# install the resulting APK once. Afterwards, JS changes ship via OTA.
+#
+# Requires: Expo account + `eas init` done (projectId in app.json) + EXPO_TOKEN
+# repo secret. The build link/APK is available on the EAS dashboard (or via
+# `eas build:list`). See OTA_SETUP.md.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build APK on EAS (preview profile)
+        run: eas build --platform android --profile preview --non-interactive --no-wait
