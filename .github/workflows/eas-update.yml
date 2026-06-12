@@ -1,0 +1,69 @@
+name: OTA Update (EAS Update)
+
+# Pushes a JavaScript/asset over-the-air update to installed apps via EAS Update.
+# The app updates itself on next launch — no APK reinstall needed.
+#
+# IMPORTANT: OTA only ships JS/asset changes. NATIVE changes (new native module,
+# permission, SDK bump) require a fresh APK from "Build APK (EAS)" first.
+#
+# One-time setup (see OTA_SETUP.md):
+#   1. Create a free Expo account, then `eas init` (writes extra.eas.projectId)
+#      and `eas update:configure` (writes updates.url) into app.json — commit them.
+#   2. Add the repo secret EXPO_TOKEN (an Expo access token).
+#   3. Install + run the EAS-built APK once so the device is OTA-enabled.
+#
+# Until EXPO_TOKEN is set, this workflow skips cleanly (no red failures).
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'App.tsx'
+      - 'index.js'
+      - 'assets/**'
+      - 'app.json'
+
+concurrency:
+  group: eas-update-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check OTA is configured
+        id: guard
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::EXPO_TOKEN absent — OTA pas encore configuré (voir OTA_SETUP.md). On saute."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.guard.outputs.configured == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.configured == 'true'
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: expo/expo-github-action@v8
+        if: steps.guard.outputs.configured == 'true'
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        if: steps.guard.outputs.configured == 'true'
+        run: npm install --legacy-peer-deps
+
+      - name: Publish OTA update
+        if: steps.guard.outputs.configured == 'true'
+        run: eas update --branch preview --message "${{ github.event.head_commit.message || github.sha }}" --non-interactive
