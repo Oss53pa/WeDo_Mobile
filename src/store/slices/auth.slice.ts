@@ -11,6 +11,13 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /**
+   * True only during the initial session restoration at app startup.
+   * The root splash in App.tsx must gate on THIS, never on `isLoading`:
+   * gating on isLoading unmounts the NavigationContainer during every
+   * auth request (sendOtp/verifyOtp) and resets the stack to Welcome.
+   */
+  isRestoring: boolean;
   error: string | null;
   // OTP flow state
   otpSent: boolean;
@@ -23,6 +30,7 @@ const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  isRestoring: true,
   error: null,
   otpSent: false,
   pendingEmail: null,
@@ -96,6 +104,7 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.isAuthenticated = true;
       state.isLoading = false;
+      state.isRestoring = false;
     },
 
     // Clear session (on SIGNED_OUT event)
@@ -105,11 +114,12 @@ const authSlice = createSlice({
       state.error = null;
       state.otpSent = false;
       state.pendingEmail = null;
+      state.isRestoring = false;
     },
 
-    // Set loading (used during session restoration)
+    // Set restoration state (only during startup session restoration)
     setLoading: (state, action: PayloadAction<boolean>) => {
-      state.isLoading = action.payload;
+      state.isRestoring = action.payload;
     },
 
     // Toggle biometric login preference
@@ -142,6 +152,7 @@ const authSlice = createSlice({
       } as unknown as User;
       state.isAuthenticated = true;
       state.isLoading = false;
+      state.isRestoring = false;
       state.error = null;
     },
   },

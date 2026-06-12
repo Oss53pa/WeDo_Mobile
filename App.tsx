@@ -42,7 +42,7 @@ import type {User} from '@types';
 const AppContent: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const {colors, isDark} = useTheme();
-  const {isAuthenticated, isLoading} = useSelector((state: RootState) => state.auth);
+  const {isAuthenticated, isRestoring} = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     // TEMP dev bypass: enter the app with a demo user and skip Supabase auth
@@ -163,7 +163,7 @@ const AppContent: React.FC = () => {
     },
   };
 
-  if (isLoading) {
+  if (isRestoring) {
     return (
       <View style={[styles.container, {backgroundColor: colors.bg.base}]}>
         <StatusBar
