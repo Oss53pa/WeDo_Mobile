@@ -23,6 +23,26 @@ export const SUPABASE_ANON_KEY = (Config as any)?.SUPABASE_ANON_KEY || DEFAULT_A
  * other apps that may share this Supabase project). */
 export const SUPABASE_SCHEMA = 'wedo';
 
+/**
+ * Atlas Studio — Error Monitor (supervision centralisée)
+ *
+ * WeDo est un produit géré par la console Atlas Studio (ASVC). Comme toutes les
+ * apps du catalogue, il REMONTE ses erreurs vers le projet Atlas via la RPC
+ * publique `upsert_error_log` (app_id = 'wedo'). Les erreurs apparaissent alors
+ * dans /admin/error-monitor/wedo et alimentent l'agent bug-triage ASVC.
+ *
+ * La clé ci-dessous est la clé **anon** (publique) du projet Atlas — ce n'est
+ * PAS un secret (rôle anon, RLS + grant EXECUTE limité à `upsert_error_log`).
+ * Surchargeable via .env (react-native-config) : ATLAS_ERR_URL / ATLAS_ERR_ANON_KEY.
+ */
+export const ATLAS_ERR_URL =
+  (Config as any)?.ATLAS_ERR_URL || 'https://vgtmljfayiysuvrcmunt.supabase.co';
+export const ATLAS_ERR_ANON_KEY =
+  (Config as any)?.ATLAS_ERR_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZndG1samZheWl5c3V2cmNtdW50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5NzgyMDUsImV4cCI6MjA4NjU1NDIwNX0.a2pyz1up8ZmZk-Tl51B0v6n3eVNkBPG5L_BJAM20qt4';
+/** App id WeDo dans le catalogue Atlas (public.apps.id). */
+export const ATLAS_ERR_APP_ID = 'wedo';
+
 /** True when the backend hasn't been configured yet (demo / preview mode). */
 export const IS_SUPABASE_CONFIGURED = SUPABASE_URL !== PLACEHOLDER_URL;
 

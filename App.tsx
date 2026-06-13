@@ -34,7 +34,12 @@ import {IS_SUPABASE_CONFIGURED} from '@config/appConfig';
 const DEV_SKIP_AUTH = !IS_SUPABASE_CONFIGURED;
 import {addNotification} from '@store/slices/notification.slice';
 import {supabase} from '@services/supabase';
+import {initAtlasErrorMonitor} from '@services/monitoring/atlasErrorMonitor';
 import type {User} from '@types';
+
+// Supervision centralisée : remonte les erreurs WeDo vers la console Atlas
+// Studio (error-monitor/wedo). Installé une seule fois, au plus tôt.
+initAtlasErrorMonitor();
 
 /**
  * AppContent Component

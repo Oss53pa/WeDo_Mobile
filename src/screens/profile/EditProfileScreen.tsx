@@ -14,6 +14,7 @@ import {
   Avatar,
   Badge,
   PressableScale,
+  ScreenHeader,
 } from '@components/common';
 import {
   CameraIcon,
@@ -198,12 +199,12 @@ const EditProfileScreen: React.FC<Props> = ({navigation}) => {
   };
 
   return (
-    <ScrollView
-      style={s.container}
-      contentContainerStyle={s.content}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled">
-      <Text style={s.screenTitle}>Modifier le profil</Text>
+    <View style={s.container}>
+      <ScreenHeader title="Modifier le profil" onBack={() => navigation.goBack()} />
+      <ScrollView
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
 
       {/* Avatar Section */}
       <Card style={s.avatarCard} padding={spacing.xl}>
@@ -426,7 +427,8 @@ const EditProfileScreen: React.FC<Props> = ({navigation}) => {
           fullWidth
         />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 

@@ -7,6 +7,7 @@ import React, {Component, ReactNode, ErrorInfo} from 'react';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {colors, typography, spacing, iconSize} from '@theme';
+import {captureError} from '@services/monitoring/atlasErrorMonitor';
 
 interface Props {
   children: ReactNode;
@@ -55,8 +56,17 @@ class ErrorBoundary extends Component<Props, State> {
       this.props.onError(error, errorInfo);
     }
 
-    // TODO: Send error to analytics/crash reporting service
-    // Example: Sentry.captureException(error);
+    // Remonte l'erreur vers la console Atlas Studio (error-monitor/wedo).
+    // Silencieux : n'impacte jamais le rendu de la fallback UI.
+    void captureError({
+      message: error?.message ? String(error.message) : String(error),
+      stack: error?.stack ?? null,
+      component: 'ErrorBoundary',
+      context: errorInfo?.componentStack
+        ? String(errorInfo.componentStack).slice(0, 2000)
+        : 'react-render-error',
+      severity: 'critical',
+    });
   }
 
   handleReset = () => {
