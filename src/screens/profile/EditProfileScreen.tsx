@@ -32,9 +32,12 @@ import {
 } from '@theme';
 import {TAB_BAR_SPACE} from '@components/navigation/CustomTabBar';
 import {RootStackParamList} from '@navigation/types';
+import * as ImagePicker from 'expo-image-picker';
 import {useDispatch, useSelector} from 'react-redux';
 import {AppDispatch, RootState} from '@store/store';
-import {updateUserProfile} from '@store/slices/user.slice';
+import {updateUserProfile, fetchUserProfile} from '@store/slices/user.slice';
+import * as userApi from '@services/api/user.api';
+import {IS_SUPABASE_CONFIGURED} from '@config/appConfig';
 import {validate, updateProfileSchema, UpdateProfileFormData} from '@utils/validation';
 
 type EditProfileScreenNavigationProp = StackNavigationProp<
@@ -57,7 +60,10 @@ const EditProfileScreen: React.FC<Props> = ({navigation}) => {
 
   const [fullName, setFullName] = useState(userData?.fullName || '');
   const [email, setEmail] = useState(userData?.email || '');
-  const [avatar, setAvatar] = useState(userData?.avatar || '');
+  const [avatar, setAvatar] = useState(
+    (userData as any)?.profilePhotoUrl || (userData as any)?.avatar || '',
+  );
+  const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -71,35 +77,76 @@ const EditProfileScreen: React.FC<Props> = ({navigation}) => {
     setHasChanges(changed);
   }, [fullName, email, avatar, userData]);
 
+  const uploadPicked = async (uri: string, mimeType?: string) => {
+    if (!IS_SUPABASE_CONFIGURED) {
+      setAvatar(uri); // demo mode: just preview locally
+      return;
+    }
+    setUploading(true);
+    try {
+      const {avatarUrl} = await userApi.uploadAvatar(uri, mimeType || 'image/jpeg');
+      setAvatar(avatarUrl);
+      await dispatch(fetchUserProfile()); // reflect everywhere (profile tab, header…)
+    } catch (e: any) {
+      Alert.alert('Erreur', e?.message || "Le téléchargement de la photo a échoué.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const pickFromCamera = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Autorisation requise', "Autorisez l'accès à la caméra dans les réglages.");
+      return;
+    }
+    const res = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!res.canceled && res.assets?.[0]) {
+      await uploadPicked(res.assets[0].uri, res.assets[0].mimeType);
+    }
+  };
+
+  const pickFromLibrary = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Autorisation requise', "Autorisez l'accès aux photos dans les réglages.");
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!res.canceled && res.assets?.[0]) {
+      await uploadPicked(res.assets[0].uri, res.assets[0].mimeType);
+    }
+  };
+
+  const removeAvatar = async () => {
+    setAvatar('');
+    if (IS_SUPABASE_CONFIGURED) {
+      try {
+        await userApi.deleteAvatar();
+        await dispatch(fetchUserProfile());
+      } catch {
+        /* non-blocking */
+      }
+    }
+  };
+
   const handleChangeAvatar = () => {
-    Alert.alert(
-      'Changer la photo de profil',
-      'Choisissez une option',
-      [
-        {
-          text: 'Prendre une photo',
-          onPress: () => {
-            // TODO: Open camera
-            Alert.alert('Info', 'Fonctionnalité caméra à venir');
-          },
-        },
-        {
-          text: 'Choisir depuis la galerie',
-          onPress: () => {
-            // TODO: Open image picker
-            Alert.alert('Info', 'Fonctionnalité galerie à venir');
-          },
-        },
-        {
-          text: 'Supprimer la photo',
-          style: 'destructive',
-          onPress: () => {
-            setAvatar('');
-          },
-        },
-        {text: 'Annuler', style: 'cancel'},
-      ]
-    );
+    Alert.alert('Photo de profil', 'Choisissez une option', [
+      {text: 'Prendre une photo', onPress: pickFromCamera},
+      {text: 'Choisir depuis la galerie', onPress: pickFromLibrary},
+      ...(avatar ? [{text: 'Supprimer la photo', style: 'destructive' as const, onPress: removeAvatar}] : []),
+      {text: 'Annuler', style: 'cancel' as const},
+    ]);
   };
 
   const handleSave = async () => {
@@ -169,12 +216,15 @@ const EditProfileScreen: React.FC<Props> = ({navigation}) => {
           <PressableScale
             style={s.changeAvatarButton}
             scaleTo={0.9}
+            disabled={uploading}
             onPress={handleChangeAvatar}>
             <CameraIcon size={20} color="#FFFFFF" />
           </PressableScale>
         </View>
 
-        <Text style={s.avatarHint}>Touchez pour changer la photo</Text>
+        <Text style={s.avatarHint}>
+          {uploading ? 'Téléchargement de la photo…' : 'Touchez pour changer la photo'}
+        </Text>
       </Card>
 
       {/* Personal Information */}

@@ -26,6 +26,13 @@
             "./assets/fonts/Dosis-Bold.ttf"
           ]
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "WeDo accède à vos photos pour définir votre photo de profil.",
+          "cameraPermission": "WeDo accède à la caméra pour prendre votre photo de profil."
+        }
       ]
     ],
     "android": {

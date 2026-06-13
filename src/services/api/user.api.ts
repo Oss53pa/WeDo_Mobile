@@ -182,12 +182,12 @@ export const uploadAvatar = async (uri: string, mimeType: string = 'image/jpeg')
   const blob = await response.blob();
 
   const {error: uploadError} = await supabase.storage
-    .from('avatars')
+    .from('wedo-avatars')
     .upload(filePath, blob, {upsert: true, contentType: mimeType});
 
   if (uploadError) throw new Error(uploadError.message);
 
-  const {data: urlData} = supabase.storage.from('avatars').getPublicUrl(filePath);
+  const {data: urlData} = supabase.storage.from('wedo-avatars').getPublicUrl(filePath);
 
   await supabase
     .from('profiles')
@@ -205,7 +205,7 @@ export const deleteAvatar = async (): Promise<{success: boolean}> => {
   if (!user) throw new Error('Not authenticated');
 
   const {error} = await supabase.storage
-    .from('avatars')
+    .from('wedo-avatars')
     .remove([`${user.id}/avatar.jpg`, `${user.id}/avatar.png`]);
 
   if (error) throw new Error(error.message);
