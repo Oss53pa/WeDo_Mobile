@@ -150,8 +150,8 @@ export const CGU: LegalDoc = {
     {
       h: '17. Droit applicable et litiges',
       body: [
-        'Les présentes CGU sont régies par le droit applicable au siège de l\'éditeur, sous réserve des dispositions impératives protégeant le consommateur.',
-        'En cas de différend, une solution amiable sera recherchée en priorité avant toute action contentieuse.',
+        'Les présentes CGU sont régies par le droit de l\'État du siège de l\'éditeur, membre de l\'espace OHADA, ainsi que par les Actes uniformes de l\'OHADA applicables, sous réserve des dispositions impératives protégeant le consommateur.',
+        'En cas de différend, une solution amiable sera recherchée en priorité ; à défaut, le litige sera porté devant les juridictions compétentes du siège de l\'éditeur, conformément au droit OHADA.',
       ],
     },
     {
