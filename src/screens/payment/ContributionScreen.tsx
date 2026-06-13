@@ -20,10 +20,13 @@ import {TAB_BAR_SPACE} from '@components/navigation/CustomTabBar';
 import {CheckIcon, InfoIcon, PlusCircleIcon} from '@components/icons';
 import {useTheme, useThemedStyles, typography, spacing, borderRadius, type ThemedTokens} from '@theme';
 import {TontinesStackParamList} from '@navigation/types';
-import {useSelector} from 'react-redux';
-import {RootState} from '@store/store';
+import {useSelector, useDispatch} from 'react-redux';
+import {RootState, AppDispatch} from '@store/store';
 import {formatCurrency, formatDate} from '@utils/formatting';
 import {validate, contributionSchema, ContributionFormData} from '@utils/validation';
+import paymentApi from '@services/api/payment.api';
+import {fetchTontineDetail} from '@store/slices/tontine.slice';
+import {IS_SUPABASE_CONFIGURED} from '@config/appConfig';
 
 type Route = RouteProp<TontinesStackParamList, 'Contribution'>;
 type Nav = StackNavigationProp<TontinesStackParamList, 'Contribution'>;
@@ -44,6 +47,7 @@ const ContributionScreen: React.FC<Props> = ({route, navigation}) => {
   const {colors} = useTheme();
   const s = useThemedStyles(makeStyles);
 
+  const dispatch = useDispatch<AppDispatch>();
   const {profile} = useSelector((state: RootState) => state.user);
   const {currentTontine} = useSelector((state: RootState) => state.tontine);
 
@@ -60,6 +64,7 @@ const ContributionScreen: React.FC<Props> = ({route, navigation}) => {
   }, [currentTontine, profile]);
 
   const handleSubmit = async () => {
+    if (!currentTontine) return;
     const formData: ContributionFormData = {
       amount: parseFloat(amount),
       paymentMethod,
@@ -77,10 +82,51 @@ const ContributionScreen: React.FC<Props> = ({route, navigation}) => {
     }
     setIsProcessing(true);
     try {
-      await new Promise(r => setTimeout(r, 1500));
-      Alert.alert('Succès', 'Votre contribution a été enregistrée avec succès !', [
-        {text: 'OK', onPress: () => navigation.goBack()},
-      ]);
+      // Demo mode (no Supabase): keep the simulated success so the flow stays explorable.
+      if (!IS_SUPABASE_CONFIGURED) {
+        await new Promise(r => setTimeout(r, 1200));
+        Alert.alert('Succès', 'Votre contribution a été enregistrée (démo).', [
+          {text: 'OK', onPress: () => navigation.goBack()},
+        ]);
+        return;
+      }
+
+      // 1) Create the pending contribution + transaction (Edge Function).
+      const {transaction} = await paymentApi.makeContribution({
+        tontineId: currentTontine.id,
+        amount: parseFloat(amount),
+        paymentMethod,
+        mobileMoneyAccountId:
+          paymentMethod === 'MobileMoney' ? selectedAccountId : undefined,
+      });
+
+      // 2) Mobile Money settles immediately (sandbox PSP → escrow + ledger + score).
+      //    Cash / bank transfer stay Pending until the treasurer confirms receipt.
+      if (paymentMethod === 'MobileMoney') {
+        const {status} = await paymentApi.verifyPayment(transaction.id);
+        if (status !== 'Completed') {
+          Alert.alert(
+            'Paiement en attente',
+            "Le paiement n'a pas encore été confirmé par l'opérateur. Vous serez notifié dès sa validation.",
+            [{text: 'OK', onPress: () => navigation.goBack()}],
+          );
+          return;
+        }
+        await dispatch(fetchTontineDetail(currentTontine.id));
+        Alert.alert(
+          'Cotisation sécurisée ✅',
+          'Votre cotisation est versée au compte de cantonnement (séquestre) et inscrite au registre. Votre score de fiabilité est mis à jour.',
+          [{text: 'Parfait', onPress: () => navigation.goBack()}],
+        );
+      } else {
+        const label =
+          paymentMethod === 'Cash' ? 'au trésorier' : 'par virement';
+        Alert.alert(
+          'Contribution enregistrée',
+          `Votre cotisation ${label} est enregistrée. Elle sera confirmée dès réception des fonds par l'organisateur.`,
+          [{text: 'OK', onPress: () => navigation.goBack()}],
+        );
+      }
     } catch (error: any) {
       Alert.alert('Erreur', error?.message || 'Une erreur est survenue lors du paiement');
     } finally {
