@@ -124,7 +124,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
         <View>
           <Text style={s.greeting}>{greeting} 👋</Text>
           <Text style={s.userName} numberOfLines={1}>
-            {user?.fullName || 'Utilisateur'}
+            {user?.fullName?.trim().split(/\s+/)[0] || 'Utilisateur'}
           </Text>
         </View>
         <View style={s.headerRight}>

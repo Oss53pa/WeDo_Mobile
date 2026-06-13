@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     // 1) Caller must be a member of the tontine (fee/activation included)
     const { data: member } = await admin
       .from("tontine_members")
-      .select("id, status, frais_du, frais_paye")
+      .select("id, status, frais_du, frais_paye, nb_tetes")
       .eq("tontine_id", tontineId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -57,10 +57,10 @@ Deno.serve(async (req) => {
       return json({ error: "Not an active member of this tontine" }, 403);
     }
 
-    // 2) Tontine context (round + currency)
+    // 2) Tontine context (round + currency + base contribution)
     const { data: tontine } = await admin
       .from("tontines")
-      .select("current_round, currency")
+      .select("current_round, currency, contribution_amount")
       .eq("id", tontineId)
       .single();
     const feeCurrency = tontine?.currency ?? "XOF";
@@ -119,6 +119,13 @@ Deno.serve(async (req) => {
       : 1;
     const currency = tontine?.currency ?? "XOF";
 
+    // Server-authoritative contribution amount = nb_tetes × base cotisation.
+    // Never trust the client `amount`: a member holding several "têtes" owes a
+    // multiple of the base contribution each round (and the pot math depends on it).
+    const tetes = Math.max(1, Number(member.nb_tetes ?? 1));
+    const baseCotisation = Number(tontine?.contribution_amount ?? amount);
+    const contribAmount = baseCotisation * tetes;
+
     // 3) Find or create the pending contribution for this round
     let { data: contribution } = await admin
       .from("contributions")
@@ -137,7 +144,7 @@ Deno.serve(async (req) => {
           tontine_id: tontineId,
           member_id: member.id,
           user_id: user.id,
-          amount,
+          amount: contribAmount,
           round,
           due_date: due.toISOString().slice(0, 10),
           status: "Pending",
@@ -160,7 +167,7 @@ Deno.serve(async (req) => {
         user_id: user.id,
         tontine_id: tontineId,
         type: "Contribution",
-        amount,
+        amount: contribAmount,
         currency,
         status: "Pending",
         description: `Cotisation tour ${round}`,
@@ -179,7 +186,7 @@ Deno.serve(async (req) => {
     let paymentUrl: string | undefined;
     let paymentToken: string | undefined;
     if (MM_PROVIDER === "cinetpay") {
-      const r = await cinetpayInit(admin, user.id, tx.id, amount, currency, `Cotisation tour ${round}`);
+      const r = await cinetpayInit(admin, user.id, tx.id, contribAmount, currency, `Cotisation tour ${round}`);
       if ("error" in r) return json({ error: r.error }, 502);
       paymentUrl = r.payment_url;
       paymentToken = r.payment_token;

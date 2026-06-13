@@ -77,6 +77,10 @@ export interface Tontine {
   tauxServiceBps?: number;
   /** Total activation fee frozen at cycle launch (FCFA). */
   fraisTotal?: number;
+  /** How many beneficiaries (têtes) receive in the same round (1 = classic). */
+  beneficiairesParTour?: number;
+  /** Number of rounds in the cycle (Σ têtes / beneficiairesParTour). */
+  totalRounds?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -104,6 +108,8 @@ export interface TontineMember {
   role: MemberRole;
   status: MemberStatus;
   receptionOrder?: number;
+  /** Number of shares ("têtes") this member holds (1 = classic). */
+  nbTetes?: number;
   joinedAt: string;
   totalContributed: number;
   totalReceived: number;
@@ -126,6 +132,10 @@ export interface CreateTontineData {
   totalMembers: number;
   frequency: Frequency;
   startDate: string;
+  /** Beneficiaries (têtes) served per round — 1 = classic, ≥2 = multi-bénéficiaire. */
+  beneficiairesParTour?: number;
+  /** Shares ("têtes") the creator takes for themselves (default 1). */
+  creatorTetes?: number;
 
   // Step 3: Distribution Rules
   distributionOrder: DistributionOrder;

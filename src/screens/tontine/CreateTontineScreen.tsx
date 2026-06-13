@@ -41,6 +41,8 @@ const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
     currency: 'XOF',
     frequency: 'Monthly',
     totalMembers: 5,
+    beneficiairesParTour: 1,
+    creatorTetes: 1,
     startDate: '',
     distributionOrder: 'Sequential',
     latePenaltyPercent: 5,
@@ -202,6 +204,8 @@ const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
               <OptionCard selected={formData.frequency === 'Monthly'} icon="calendar-month" label="Mensuel" onPress={() => update('frequency', 'Monthly')} />
             </View>
             <Input label="Nombre de membres *" placeholder="5" value={formData.totalMembers ? String(formData.totalMembers) : ''} onChangeText={v => update('totalMembers', parseInt(v, 10) || 0)} type="number" helperText="Minimum 3 participants" />
+            <Input label="Bénéficiaires par tour" placeholder="1" value={formData.beneficiairesParTour ? String(formData.beneficiairesParTour) : ''} onChangeText={v => update('beneficiairesParTour', Math.max(1, parseInt(v, 10) || 1))} type="number" helperText="Combien de personnes reçoivent en même temps chaque tour (1 = tontine classique). Le total des têtes doit être un multiple de ce nombre." />
+            <Input label="Mes têtes (parts)" placeholder="1" value={formData.creatorTetes ? String(formData.creatorTetes) : ''} onChangeText={v => update('creatorTetes', Math.max(1, parseInt(v, 10) || 1))} type="number" helperText="Une tête = une cotisation et une place dans le tour. Prenez-en plusieurs pour cotiser et recevoir davantage." />
             <DatePickerField label="Date de début *" value={formData.startDate} onChange={v => update('startDate', v)} minimumDate={new Date()} helperText="Date du premier tour" />
             <Input label="Caution (optionnel)" placeholder="0" value={formData.depositAmount ? String(formData.depositAmount) : ''} onChangeText={v => update('depositAmount', parseFloat(v) || 0)} type="number" helperText="Garantie remboursable en fin de tontine" />
           </>

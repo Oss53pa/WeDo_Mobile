@@ -56,6 +56,7 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [refreshing, setRefreshing] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [joinTetes, setJoinTetes] = useState(1);
   const [fee, setFee] = useState<tontineApi.MyActivationFee | null>(null);
   const [payingFee, setPayingFee] = useState(false);
 
@@ -116,7 +117,7 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
     setJoining(true);
     try {
       // Gated join: enforces the reliability score_minimum + KYC P2 (séquestre).
-      const res = await tontineApi.rejoindreTontine(tontineId);
+      const res = await tontineApi.rejoindreTontine(tontineId, undefined, joinTetes);
       if (res?.success) {
         show(
           res.already
@@ -241,6 +242,14 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
             {t.status === 'Active' && (t.nextBeneficiary || t.currentBalance != null) && (
               <View style={s.block}>
                 <Text style={s.blockTitle}>{copy.nextBeneficiary}</Text>
+                {(t.beneficiairesParTour ?? 1) > 1 && (
+                  <View style={s.multiBenefChip}>
+                    <Icon name="account-multiple" size={15} color={colors.accent.main} />
+                    <Text style={s.multiBenefText}>
+                      {t.beneficiairesParTour} bénéficiaires se partagent la cagnotte à chaque tour
+                    </Text>
+                  </View>
+                )}
                 {t.nextBeneficiary && (
                   <View style={s.beneficiary}>
                     <Avatar
@@ -282,15 +291,38 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
 
             <View style={s.actions}>
               {t.status === 'Open' && !t.isMember && (
-                <Button
-                  title={copy.join}
-                  variant="gradient"
-                  fullWidth
-                  size="large"
-                  icon="account-plus"
-                  loading={joining}
-                  onPress={handleJoin}
-                />
+                <>
+                  <View style={s.tetesPicker}>
+                    <View style={{flex: 1}}>
+                      <Text style={s.tetesLabel}>Mes têtes (parts)</Text>
+                      <Text style={s.tetesHint}>
+                        1 tête = 1 cotisation/tour et 1 place. Prenez-en plusieurs pour recevoir davantage.
+                      </Text>
+                    </View>
+                    <View style={s.stepper}>
+                      <PressableScale
+                        style={s.stepBtn}
+                        onPress={() => setJoinTetes(v => Math.max(1, v - 1))}>
+                        <Icon name="minus" size={18} color={colors.text.primary} />
+                      </PressableScale>
+                      <Text style={s.stepVal}>{joinTetes}</Text>
+                      <PressableScale
+                        style={s.stepBtn}
+                        onPress={() => setJoinTetes(v => Math.min(20, v + 1))}>
+                        <Icon name="plus" size={18} color={colors.text.primary} />
+                      </PressableScale>
+                    </View>
+                  </View>
+                  <Button
+                    title={copy.join}
+                    variant="gradient"
+                    fullWidth
+                    size="large"
+                    icon="account-plus"
+                    loading={joining}
+                    onPress={handleJoin}
+                  />
+                </>
               )}
               {t.status === 'Active' && (
                 <Button
@@ -517,6 +549,18 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     },
     blockTitle: {...typography.h3, color: colors.text.primary, marginBottom: spacing.md, fontWeight: '700'},
     hint: {...typography.caption, color: colors.text.secondary},
+    multiBenefChip: {flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.md,
+      backgroundColor: colors.accent[50], borderRadius: borderRadius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md},
+    multiBenefText: {...typography.caption, color: colors.accent.main, fontWeight: '600', flex: 1},
+    tetesPicker: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md,
+      backgroundColor: colors.surface.sunken, borderRadius: borderRadius.lg, padding: spacing.md,
+      borderWidth: 1, borderColor: colors.border.subtle},
+    tetesLabel: {...typography.bodyMedium, color: colors.text.primary, fontWeight: '700'},
+    tetesHint: {...typography.caption, color: colors.text.secondary, marginTop: 2},
+    stepper: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    stepBtn: {width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface.default, borderWidth: 1, borderColor: colors.border.default},
+    stepVal: {...typography.h3, color: colors.text.primary, fontWeight: '800', minWidth: 24, textAlign: 'center'},
     beneficiary: {flexDirection: 'row', alignItems: 'center'},
     benName: {...typography.bodyMedium, color: colors.text.primary, fontWeight: '700'},
     feeBanner: {

@@ -48,6 +48,8 @@ const mapTontine = (row: any): Tontine => ({
   inviteCode: row.invite_code || undefined,
   tauxServiceBps: row.taux_service_bps ?? 80,
   fraisTotal: row.frais_total ?? 0,
+  beneficiairesParTour: row.beneficiaires_par_tour ?? 1,
+  totalRounds: row.total_rounds ?? 0,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -227,6 +229,7 @@ export const getTontineDetail = async (tontineId: string): Promise<TontineDetail
     role: m.role as any,
     status: m.status as any,
     receptionOrder: m.reception_order,
+    nbTetes: m.nb_tetes ?? 1,
     joinedAt: m.joined_at,
     totalContributed: m.total_contributed,
     totalReceived: m.total_received,
@@ -306,6 +309,7 @@ export const createTontine = async (data: CreateTontineData): Promise<Tontine> =
       auto_approve: data.autoApprove,
       allow_observers: data.allowObservers,
       total_rounds: data.totalMembers,
+      beneficiaires_par_tour: data.beneficiairesParTour ?? 1,
       sequestre_active: data.sequestreActive ?? true,
       score_minimum: data.scoreMinimum ?? 0,
     })
@@ -321,6 +325,7 @@ export const createTontine = async (data: CreateTontineData): Promise<Tontine> =
     role: 'Admin',
     status: 'Active',
     reception_order: 1,
+    nb_tetes: data.creatorTetes ?? 1,
   });
 
   return mapTontine(tontine);
@@ -394,11 +399,13 @@ export const joinTontine = async (data: JoinTontineRequest): Promise<{success: b
 export const rejoindreTontine = async (
   tontineId: string,
   parrainPersonneId?: string,
+  nbTetes: number = 1,
 ): Promise<{success: boolean; error?: string; need?: 'P2' | 'SCORE'; already?: boolean}> => {
   if (!IS_SUPABASE_CONFIGURED) return {success: true};
   const {data, error} = await supabase.rpc('rejoindre_tontine', {
     p_tontine_id: tontineId,
     p_parrain_personne: parrainPersonneId ?? null,
+    p_nb_tetes: Math.max(1, Math.floor(nbTetes)),
   });
   if (error) throw new Error(error.message);
   return data as any;
