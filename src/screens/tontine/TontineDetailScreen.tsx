@@ -44,6 +44,23 @@ const frequencyLabel = (f: string): string =>
   ({Daily: 'chaque jour', Weekly: 'chaque semaine', BiWeekly: 'tous les 15 jours', Monthly: 'chaque mois'} as any)[f] ??
   'selon la fréquence';
 
+/** Per-member status pill for the Members tab: place confirmation + round payment. */
+const memberPayBadge = (
+  m: any,
+  payStatus: string | undefined,
+  tontineStatus: string,
+  colors: any,
+): {label: string; tone: string} | null => {
+  if (m.status === 'Pending') return {label: 'Place à confirmer', tone: colors.warning};
+  if (tontineStatus === 'Active') {
+    if (payStatus === 'Paid') return {label: 'A payé', tone: colors.success};
+    if (payStatus === 'Late' || payStatus === 'Failed') return {label: 'En retard', tone: colors.brand.crimson};
+    return {label: 'En attente', tone: colors.warning};
+  }
+  if (tontineStatus === 'Open') return {label: 'Place OK', tone: colors.success};
+  return null;
+};
+
 type DetailRoute = RouteProp<TontinesStackParamList, 'TontineDetail'>;
 type DetailNav = StackNavigationProp<TontinesStackParamList, 'TontineDetail'>;
 interface Props {
@@ -67,6 +84,7 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const [joinTetes, setJoinTetes] = useState(1);
   const [fee, setFee] = useState<tontineApi.MyActivationFee | null>(null);
   const [payingFee, setPayingFee] = useState(false);
+  const [roundPayments, setRoundPayments] = useState<Record<string, string>>({});
 
   const {currentTontine, isLoading} = useSelector((state: RootState) => state.tontine);
   const {user} = useSelector((state: RootState) => state.auth);
@@ -78,13 +96,24 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
   }, [tontineId]);
 
   const load = async () => {
+    let detail: any = null;
     try {
-      await dispatch(fetchTontineDetail(tontineId)).unwrap();
+      detail = await dispatch(fetchTontineDetail(tontineId)).unwrap();
     } catch (e) {
       /* handled in slice */
     }
     try {
       setFee(await tontineApi.getMyActivationFee(tontineId));
+    } catch {
+      /* non-blocking */
+    }
+    // Who has paid this round (visible to any member via RLS).
+    try {
+      if (detail?.status === 'Active' && detail?.currentRound > 0) {
+        setRoundPayments(await tontineApi.getRoundContributions(tontineId, detail.currentRound));
+      } else {
+        setRoundPayments({});
+      }
     } catch {
       /* non-blocking */
     }
@@ -414,7 +443,7 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
             <View style={{paddingTop: spacing.md}}>
               {members.map((m: any, i: number) => {
                 const name = m.user?.fullName ?? m.fullName ?? 'Membre';
-                const paid = m.hasPaid ?? m.hasReceived;
+                const pay = memberPayBadge(m, roundPayments[m.userId], t.status, colors);
                 return (
                   <Animated.View key={m.id ?? m.userId ?? i} entering={FadeInDown.delay(i * 40).duration(320)}>
                     <PressableScale
@@ -429,10 +458,10 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
                         {(m.isAdmin || m.role === 'Admin') && <Badge variant="soft" tone={colors.brand.indigo} label="Admin" size="small" />}
                       </View>
                       <Text style={s.hint} numberOfLines={1}>
-                        {m.phoneNumber ?? (m.totalContributed != null ? `Cotisé: ${formatCurrency(m.totalContributed, t.currency)}` : '')}
+                        {m.totalContributed != null ? `Cotisé: ${formatCurrency(m.totalContributed, t.currency)}` : ''}
                       </Text>
                     </View>
-                    {paid ? <CheckIcon size={20} color={colors.success} /> : <ClockIcon size={20} color={colors.warning} />}
+                    {pay && <Badge variant="soft" tone={pay.tone} label={pay.label} size="small" />}
                     <ChevronRightIcon size={18} color={colors.text.tertiary} />
                     </PressableScale>
                   </Animated.View>

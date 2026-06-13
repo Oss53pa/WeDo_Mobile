@@ -608,6 +608,29 @@ export const getTontineMembers = async (tontineId: string) => {
 };
 
 /**
+ * Payment status of every member for a given round → { userId: status }.
+ * Any tontine member can read this (RLS c_select = is_tontine_member). Lets the
+ * Members tab show who has paid / is pending / is late this round.
+ */
+export const getRoundContributions = async (
+  tontineId: string,
+  round: number,
+): Promise<Record<string, string>> => {
+  if (!IS_SUPABASE_CONFIGURED || !round) return {};
+  const {data, error} = await supabase
+    .from('contributions')
+    .select('user_id, status')
+    .eq('tontine_id', tontineId)
+    .eq('round', round);
+  if (error) return {};
+  const map: Record<string, string> = {};
+  (data || []).forEach((c: any) => {
+    map[c.user_id] = c.status;
+  });
+  return map;
+};
+
+/**
  * Search tontines
  */
 export const searchTontines = async (
@@ -639,5 +662,6 @@ export default {
   endTontine,
   getTontineStats,
   getTontineMembers,
+  getRoundContributions,
   searchTontines,
 };

@@ -23,6 +23,7 @@ import {
   Button,
   PressableScale,
   SegmentedControl,
+  ScreenHeader,
   type SegmentOption,
 } from '@components/common';
 import {ChevronRightIcon, AlertIcon, CheckIcon} from '@components/icons';
@@ -253,11 +254,11 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
   ];
 
   return (
-    <ScrollView
-      style={s.container}
-      contentContainerStyle={s.content}
-      showsVerticalScrollIndicator={false}>
-      <Text style={s.screenTitle}>Paramètres</Text>
+    <View style={s.container}>
+      <ScreenHeader title="Paramètres" onBack={() => navigation.goBack()} />
+      <ScrollView
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}>
 
       {/* Appearance Section */}
       <Card style={s.card} padding={spacing.md}>
@@ -572,7 +573,8 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
       </View>
 
       <Text style={s.versionText}>TontineDigital v1.0.0</Text>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
