@@ -213,7 +213,7 @@ export const getOrganizerOverview = async (
 
   const {data: contribs} = await supabase
     .from('contributions')
-    .select('id, user_id, amount, status, round, due_date, payment_method, profiles(full_name)')
+    .select('id, user_id, amount, status, round, due_date, payment_method, profiles(nom_public)')
     .eq('tontine_id', tontineId)
     .eq('round', round);
 
@@ -224,7 +224,7 @@ export const getOrganizerOverview = async (
     .map((c: any) => ({
       contributionId: c.id,
       userId: c.user_id,
-      fullName: c.profiles?.full_name ?? 'Membre',
+      fullName: c.profiles?.nom_public ?? 'Membre',
       amount: c.amount,
       status: c.status,
       paymentMethod: c.payment_method ?? undefined,
@@ -236,7 +236,7 @@ export const getOrganizerOverview = async (
     .filter((c: any) => c.status === 'Late' || c.status === 'Failed')
     .map((c: any) => ({
       userId: c.user_id,
-      fullName: c.profiles?.full_name ?? 'Membre',
+      fullName: c.profiles?.nom_public ?? 'Membre',
       status: c.status,
       round: c.round,
       dueDate: c.due_date,

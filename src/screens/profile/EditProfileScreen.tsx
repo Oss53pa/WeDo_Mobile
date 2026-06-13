@@ -59,6 +59,7 @@ const EditProfileScreen: React.FC<Props> = ({navigation}) => {
   const userData = profile || user;
 
   const [fullName, setFullName] = useState(userData?.fullName || '');
+  const [displayName, setDisplayName] = useState((userData as any)?.displayName || '');
   const [email, setEmail] = useState(userData?.email || '');
   const [avatar, setAvatar] = useState(
     (userData as any)?.profilePhotoUrl || (userData as any)?.avatar || '',
@@ -71,11 +72,12 @@ const EditProfileScreen: React.FC<Props> = ({navigation}) => {
     // Check if there are changes
     const changed =
       fullName !== (userData?.fullName || '') ||
+      displayName !== ((userData as any)?.displayName || '') ||
       email !== (userData?.email || '') ||
       avatar !== (userData?.avatar || '');
 
     setHasChanges(changed);
-  }, [fullName, email, avatar, userData]);
+  }, [fullName, displayName, email, avatar, userData]);
 
   const uploadPicked = async (uri: string, mimeType?: string) => {
     if (!IS_SUPABASE_CONFIGURED) {
@@ -153,6 +155,7 @@ const EditProfileScreen: React.FC<Props> = ({navigation}) => {
     // Validate
     const formData: UpdateProfileFormData = {
       fullName: fullName || undefined,
+      displayName,
       email: email || undefined,
       avatar: avatar || undefined,
     };
@@ -239,6 +242,18 @@ const EditProfileScreen: React.FC<Props> = ({navigation}) => {
           onChangeText={setFullName}
           error={errors.fullName}
           leftIcon="account"
+          helperText="Votre vrai nom. Gardé confidentiel par WeDo et requis pour la sécurité (vérification, séquestre)."
+        />
+
+        <Input
+          label="Pseudonyme (optionnel)"
+          placeholder="Ex: Tata B, Le Boss, Awa225…"
+          value={displayName}
+          onChangeText={setDisplayName}
+          error={errors.displayName}
+          leftIcon="incognito"
+          maxLength={40}
+          helperText="Si renseigné, c'est ce nom que les autres membres voient à la place de votre vrai nom. Laissez vide pour afficher votre nom."
         />
 
         <Input

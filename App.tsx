@@ -77,6 +77,7 @@ const AppContent: React.FC = () => {
               id: profile.id,
               phoneNumber: profile.phone_number,
               fullName: profile.full_name,
+              displayName: profile.display_name || undefined,
               email: profile.email || undefined,
               profilePhotoUrl: profile.profile_photo_url || undefined,
               reputationScore: profile.reputation_score,

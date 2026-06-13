@@ -113,7 +113,7 @@ export const processDistribution = async (data: {
 export const getDistribution = async (distributionId: string): Promise<Distribution> => {
   const {data, error} = await supabase
     .from('distributions')
-    .select('*, profiles:recipient_id(id, full_name, profile_photo_url)')
+    .select('*, profiles:recipient_id(id, nom_public, profile_photo_url)')
     .eq('id', distributionId)
     .single();
 
@@ -125,7 +125,7 @@ export const getDistribution = async (distributionId: string): Promise<Distribut
     recipientId: data.recipient_id,
     recipient: data.profiles ? {
       id: (data.profiles as any).id,
-      fullName: (data.profiles as any).full_name,
+      fullName: (data.profiles as any).nom_public,
       profilePhotoUrl: (data.profiles as any).profile_photo_url,
     } : undefined,
     amount: data.amount,
@@ -194,7 +194,7 @@ export const getTontineDistributions = async (
 ): Promise<Distribution[]> => {
   let query = supabase
     .from('distributions')
-    .select('*, profiles:recipient_id(id, full_name, profile_photo_url)')
+    .select('*, profiles:recipient_id(id, nom_public, profile_photo_url)')
     .eq('tontine_id', tontineId)
     .order('created_at', {ascending: false});
 
@@ -211,7 +211,7 @@ export const getTontineDistributions = async (
     recipientId: d.recipient_id,
     recipient: d.profiles ? {
       id: d.profiles.id,
-      fullName: d.profiles.full_name,
+      fullName: d.profiles.nom_public,
       profilePhotoUrl: d.profiles.profile_photo_url,
     } : undefined,
     amount: d.amount,

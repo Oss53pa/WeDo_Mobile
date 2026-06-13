@@ -18,7 +18,10 @@ export enum KYCLevel {
 export interface User {
   id: string;
   phoneNumber: string;
+  /** Real legal name — kept private (KYC / EME / Atlas Studio). */
   fullName: string;
+  /** Optional pseudonym shown to other members instead of the real name. */
+  displayName?: string;
   email?: string;
   profilePhotoUrl?: string;
   /** Convenience alias for profilePhotoUrl used by some screens. */

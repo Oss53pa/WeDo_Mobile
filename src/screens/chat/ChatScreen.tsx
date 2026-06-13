@@ -76,7 +76,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
     const loadMessages = async () => {
       const {data, error} = await supabase
         .from('messages')
-        .select('*, profiles:sender_id(id, full_name, profile_photo_url)')
+        .select('*, profiles:sender_id(id, nom_public, profile_photo_url)')
         .eq('tontine_id', tontineId)
         .order('created_at', {ascending: true})
         .limit(100);
@@ -89,7 +89,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
       const mapped: ChatMessage[] = (data || []).map((msg: any) => ({
         id: msg.id,
         senderId: msg.sender_id,
-        senderName: msg.profiles?.full_name || 'Inconnu',
+        senderName: msg.profiles?.nom_public || 'Inconnu',
         content: msg.content,
         timestamp: new Date(msg.created_at),
         type: msg.message_type === 'System' ? 'system' : 'text',
@@ -125,14 +125,14 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
           // Fetch sender profile
           const {data: profile} = await supabase
             .from('profiles')
-            .select('full_name')
+            .select('nom_public')
             .eq('id', msg.sender_id)
             .single();
 
           const newMessage: ChatMessage = {
             id: msg.id,
             senderId: msg.sender_id,
-            senderName: profile?.full_name || 'Inconnu',
+            senderName: (profile as any)?.nom_public || 'Inconnu',
             content: msg.content,
             timestamp: new Date(msg.created_at),
             type: msg.message_type === 'System' ? 'system' : 'text',

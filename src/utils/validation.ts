@@ -163,6 +163,11 @@ export const updateProfileSchema = z.object({
     .min(3, 'Le nom complet doit contenir au moins 3 caractères')
     .max(100, 'Le nom complet ne peut pas dépasser 100 caractères')
     .optional(),
+  displayName: z
+    .string()
+    .max(40, 'Le pseudonyme ne peut pas dépasser 40 caractères')
+    .optional()
+    .or(z.literal('')),
   email: z
     .string()
     .email('Adresse email invalide')

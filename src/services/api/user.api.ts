@@ -20,6 +20,7 @@ const mapProfileToUser = (profile: any): User => ({
   id: profile.id,
   phoneNumber: profile.phone_number,
   fullName: profile.full_name,
+  displayName: profile.display_name || undefined,
   email: profile.email || undefined,
   profilePhotoUrl: profile.profile_photo_url || undefined,
   reputationScore: profile.reputation_score,
@@ -139,6 +140,7 @@ export const getMyProfile = async (): Promise<UserProfile> => {
  */
 export const updateProfile = async (data: Partial<{
   fullName: string;
+  displayName: string;
   email: string;
   city: string;
   region: string;
@@ -152,6 +154,8 @@ export const updateProfile = async (data: Partial<{
 
   const updateData: any = {};
   if (data.fullName !== undefined) updateData.full_name = data.fullName;
+  // Optional pseudonym shown to other members; '' clears it (real name shows).
+  if (data.displayName !== undefined) updateData.display_name = data.displayName.trim() || null;
   if (data.email !== undefined) updateData.email = data.email;
   if (data.city !== undefined) updateData.city = data.city;
   if (data.region !== undefined) updateData.region = data.region;

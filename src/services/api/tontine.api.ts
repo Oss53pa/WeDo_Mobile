@@ -107,7 +107,7 @@ export const getConversations = async (): Promise<Conversation[]> => {
     tontines.map(async t => {
       const {data} = await supabase
         .from('messages')
-        .select('content, created_at, profiles:sender_id(full_name)')
+        .select('content, created_at, profiles:sender_id(nom_public)')
         .eq('tontine_id', t.id)
         .order('created_at', {ascending: false})
         .limit(1)
@@ -119,7 +119,7 @@ export const getConversations = async (): Promise<Conversation[]> => {
         memberCount: t.currentMembers,
         status: t.status,
         lastMessage: (data as any)?.content ?? undefined,
-        lastMessageSender: (data as any)?.profiles?.full_name ?? undefined,
+        lastMessageSender: (data as any)?.profiles?.nom_public ?? undefined,
         lastMessageTime: (data as any)?.created_at ?? undefined,
       } as Conversation;
     }),
@@ -211,7 +211,7 @@ export const getTontineDetail = async (tontineId: string): Promise<TontineDetail
   // Fetch members with profile info
   const {data: members} = await supabase
     .from('tontine_members')
-    .select('*, profiles(id, full_name, profile_photo_url, reputation_score, reputation_level)')
+    .select('*, profiles(id, nom_public, profile_photo_url, reputation_score, reputation_level)')
     .eq('tontine_id', tontineId)
     .order('joined_at', {ascending: true});
 
@@ -221,7 +221,7 @@ export const getTontineDetail = async (tontineId: string): Promise<TontineDetail
     userId: m.user_id,
     user: m.profiles ? {
       id: m.profiles.id,
-      fullName: m.profiles.full_name,
+      fullName: m.profiles.nom_public,
       profilePhotoUrl: m.profiles.profile_photo_url,
       reputationScore: m.profiles.reputation_score,
       reputationLevel: m.profiles.reputation_level,
@@ -597,7 +597,7 @@ export const getTontineStats = async (tontineId: string) => {
 export const getTontineMembers = async (tontineId: string) => {
   const {data, error} = await supabase
     .from('tontine_members')
-    .select('*, profiles(id, full_name, profile_photo_url, reputation_score, reputation_level)')
+    .select('*, profiles(id, nom_public, profile_photo_url, reputation_score, reputation_level)')
     .eq('tontine_id', tontineId)
     .order('joined_at', {ascending: true});
 
