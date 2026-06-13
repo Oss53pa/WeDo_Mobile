@@ -236,7 +236,7 @@ export const getTransactionHistory = async (
 
   let query = supabase
     .from('transactions')
-    .select('*', {count: 'exact'})
+    .select('*, tontines(name)', {count: 'exact'})
     .eq('user_id', user.id)
     .order('created_at', {ascending: false});
 
@@ -252,6 +252,7 @@ export const getTransactionHistory = async (
     id: d.id,
     userId: d.user_id,
     tontineId: d.tontine_id,
+    tontineName: d.tontines?.name || undefined,
     type: d.type as any,
     amount: d.amount,
     currency: d.currency,

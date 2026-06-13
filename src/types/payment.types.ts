@@ -97,6 +97,7 @@ export interface Transaction {
   id: string;
   userId: string;
   tontineId: string;
+  tontineName?: string;
   type: TransactionType;
   amount: number;
   currency: string;

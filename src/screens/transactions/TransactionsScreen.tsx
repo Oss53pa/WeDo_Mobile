@@ -3,9 +3,12 @@
  * History of all contributions and distributions — "Kente Vibrant" restyle.
  */
 
-import React, {useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {View, Text, StyleSheet, FlatList, RefreshControl} from 'react-native';
 import Animated, {FadeInDown} from 'react-native-reanimated';
+import paymentApi from '@services/api/payment.api';
+import {IS_SUPABASE_CONFIGURED} from '@config/appConfig';
+import {LoadingSpinner} from '@components/common';
 import {
   useTheme,
   useThemedStyles,
@@ -104,6 +107,40 @@ const mockTransactions: Transaction[] = [
   },
 ];
 
+// Map a backend transaction (positive magnitude + API enum) to the signed
+// display row this screen renders.
+const mapApiTransaction = (t: {
+  id: string;
+  type: string;
+  amount: number;
+  currency: string;
+  tontineName?: string;
+  description: string;
+  status: string;
+  createdAt: string;
+}): Transaction => {
+  const type: Transaction['type'] =
+    t.type === 'Distribution'
+      ? 'distribution'
+      : t.type === 'Penalty'
+        ? 'penalty'
+        : t.type === 'Refund' || t.type === 'Deposit'
+          ? 'distribution'
+          : 'contribution';
+  const credit = type === 'distribution';
+  return {
+    id: t.id,
+    type,
+    amount: credit ? Math.abs(t.amount) : -Math.abs(t.amount),
+    currency: t.currency === 'XOF' ? 'FCFA' : t.currency,
+    tontineName: t.tontineName || 'Tontine',
+    date: new Date(t.createdAt),
+    status:
+      t.status === 'Completed' ? 'completed' : t.status === 'Failed' ? 'failed' : 'pending',
+    description: t.description,
+  };
+};
+
 type FilterType = 'all' | 'contribution' | 'distribution';
 
 const FILTER_OPTIONS: {label: string; value: FilterType}[] = [
@@ -116,9 +153,26 @@ const TransactionsScreen: React.FC = () => {
   const {colors} = useTheme();
   const s = useThemedStyles(makeStyles);
 
-  const [transactions] = useState<Transaction[]>(mockTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>(
+    IS_SUPABASE_CONFIGURED ? [] : mockTransactions,
+  );
   const [filter, setFilter] = useState<FilterType>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(IS_SUPABASE_CONFIGURED);
+
+  const load = useCallback(async () => {
+    if (!IS_SUPABASE_CONFIGURED) return;
+    try {
+      const res = await paymentApi.getTransactionHistory(1, 50);
+      setTransactions(res.data.map(mapApiTransaction));
+    } catch {
+      // keep whatever we have; the empty state covers no data
+    }
+  }, []);
+
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, [load]);
 
   const filteredTransactions = transactions.filter(t => {
     if (filter === 'all') return true;
@@ -130,7 +184,7 @@ const TransactionsScreen: React.FC = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await load();
     setRefreshing(false);
   };
 
@@ -269,6 +323,15 @@ const TransactionsScreen: React.FC = () => {
       />
     </View>
   );
+
+  if (loading) {
+    return (
+      <View style={s.container}>
+        <ScreenHeader title="Transactions" />
+        <LoadingSpinner fullScreen text="Chargement de l'historique…" />
+      </View>
+    );
+  }
 
   return (
     <View style={s.container}>
