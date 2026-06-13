@@ -3,7 +3,7 @@
  * List of conversations with tontine groups — "Kente Vibrant" restyle.
  */
 
-import React, {useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,10 @@ import {
   TextInput,
   RefreshControl,
 } from 'react-native';
-import {useSelector} from 'react-redux';
+import {useNavigation} from '@react-navigation/native';
 import Animated, {FadeInDown} from 'react-native-reanimated';
+import tontineApi from '@services/api/tontine.api';
+import {LoadingSpinner} from '@components/common';
 import {
   useTheme,
   useThemedStyles,
@@ -31,7 +33,6 @@ import {
 } from '@components/common';
 import {SearchIcon, CloseIcon} from '@components/icons';
 import {TAB_BAR_SPACE} from '@components/navigation/CustomTabBar';
-import {RootState} from '@store/store';
 
 interface Conversation {
   id: string;
@@ -46,62 +47,41 @@ interface Conversation {
   isActive: boolean;
 }
 
-// Mock data for conversations
-const mockConversations: Conversation[] = [
-  {
-    id: '1',
-    tontineId: 't1',
-    tontineName: 'Tontine Famille Kouassi',
-    lastMessage: "N'oubliez pas la cotisation de ce mois!",
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 5),
-    lastMessageSender: 'Marie K.',
-    unreadCount: 3,
-    memberCount: 12,
-    isActive: true,
-  },
-  {
-    id: '2',
-    tontineId: 't2',
-    tontineName: 'Epargne Collegues Tech',
-    lastMessage: 'Felicitations a Jean pour son tour!',
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    lastMessageSender: 'Admin',
-    unreadCount: 0,
-    memberCount: 8,
-    isActive: true,
-  },
-  {
-    id: '3',
-    tontineId: 't3',
-    tontineName: 'Tontine du Quartier',
-    lastMessage: 'La reunion est reportee a samedi',
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    lastMessageSender: 'Paul M.',
-    unreadCount: 1,
-    memberCount: 15,
-    isActive: true,
-  },
-  {
-    id: '4',
-    tontineId: 't4',
-    tontineName: 'Cercle des Entrepreneurs',
-    lastMessage: 'Bienvenue aux nouveaux membres!',
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 48),
-    lastMessageSender: 'Sophie A.',
-    unreadCount: 0,
-    memberCount: 20,
-    isActive: true,
-  },
-];
-
 const MessagesScreen: React.FC = () => {
   const {colors} = useTheme();
   const s = useThemedStyles(makeStyles);
+  const navigation = useNavigation<any>();
 
-  const [conversations] = useState<Conversation[]>(mockConversations);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const user = useSelector((state: RootState) => state.auth.user);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const rows = await tontineApi.getConversations();
+      setConversations(
+        rows.map((c, i) => ({
+          id: c.tontineId || String(i),
+          tontineId: c.tontineId,
+          tontineName: c.tontineName,
+          tontineImage: c.photoUrl,
+          lastMessage: c.lastMessage || 'Démarrez la conversation',
+          lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime) : new Date(),
+          lastMessageSender: c.lastMessageSender || '',
+          unreadCount: 0,
+          memberCount: c.memberCount,
+          isActive: c.status === 'Active',
+        })),
+      );
+    } catch {
+      // empty state covers failure
+    }
+  }, []);
+
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, [load]);
 
   const filteredConversations = conversations.filter(conv =>
     conv.tontineName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -123,8 +103,7 @@ const MessagesScreen: React.FC = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Simulate refresh
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await load();
     setRefreshing(false);
   };
 
@@ -139,7 +118,11 @@ const MessagesScreen: React.FC = () => {
 
     return (
       <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 40).springify()}>
-        <PressableScale style={s.conversationItem} scaleTo={0.98}>
+        <PressableScale
+          style={s.conversationItem}
+          scaleTo={0.98}
+          onPress={() => navigation.navigate('Chat', {tontineId: item.tontineId})}>
+
           <Avatar
             name={item.tontineName}
             imageUrl={item.tontineImage}
@@ -198,6 +181,15 @@ const MessagesScreen: React.FC = () => {
     (sum, conv) => sum + conv.unreadCount,
     0
   );
+
+  if (loading) {
+    return (
+      <View style={s.container}>
+        <ScreenHeader title="Messages" />
+        <LoadingSpinner fullScreen text="Chargement des conversations…" />
+      </View>
+    );
+  }
 
   return (
     <View style={s.container}>

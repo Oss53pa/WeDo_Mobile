@@ -71,6 +71,61 @@ export const getMyTontines = async (): Promise<Tontine[]> => {
     .map((d: any) => mapTontine(d.tontines));
 };
 
+export interface Conversation {
+  tontineId: string;
+  tontineName: string;
+  photoUrl?: string;
+  memberCount: number;
+  status: string;
+  lastMessage?: string;
+  lastMessageSender?: string;
+  lastMessageTime?: string;
+}
+
+/**
+ * Conversations list = the user's tontines, each with its latest chat message.
+ */
+export const getConversations = async (): Promise<Conversation[]> => {
+  if (!IS_SUPABASE_CONFIGURED) {
+    return demoTontines.map(t => ({
+      tontineId: t.id,
+      tontineName: t.name,
+      photoUrl: t.photoUrl,
+      memberCount: t.currentMembers,
+      status: t.status,
+      lastMessage: 'Touchez pour discuter avec les membres',
+      lastMessageSender: '',
+      lastMessageTime: t.updatedAt,
+    }));
+  }
+  const tontines = await getMyTontines();
+  const convos = await Promise.all(
+    tontines.map(async t => {
+      const {data} = await supabase
+        .from('messages')
+        .select('content, created_at, profiles:sender_id(full_name)')
+        .eq('tontine_id', t.id)
+        .order('created_at', {ascending: false})
+        .limit(1)
+        .maybeSingle();
+      return {
+        tontineId: t.id,
+        tontineName: t.name,
+        photoUrl: t.photoUrl,
+        memberCount: t.currentMembers,
+        status: t.status,
+        lastMessage: (data as any)?.content ?? undefined,
+        lastMessageSender: (data as any)?.profiles?.full_name ?? undefined,
+        lastMessageTime: (data as any)?.created_at ?? undefined,
+      } as Conversation;
+    }),
+  );
+  // Most-recently-active conversations first.
+  return convos.sort((a, b) =>
+    (b.lastMessageTime ?? '').localeCompare(a.lastMessageTime ?? ''),
+  );
+};
+
 /**
  * Get public tontines with filters
  */
@@ -524,6 +579,7 @@ export const searchTontines = async (
 
 export default {
   getMyTontines,
+  getConversations,
   getPublicTontines,
   getTontineDetail,
   createTontine,

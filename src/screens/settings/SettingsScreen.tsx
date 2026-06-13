@@ -11,7 +11,11 @@ import {
   ScrollView,
   Switch,
   Alert,
+  Share,
 } from 'react-native';
+import tontineApi from '@services/api/tontine.api';
+import paymentApi from '@services/api/payment.api';
+import {IS_SUPABASE_CONFIGURED} from '@config/appConfig';
 import {StackNavigationProp} from '@react-navigation/stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
@@ -90,47 +94,25 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
     }
   };
 
-  const handleChangePIN = () => {
-    Alert.alert(
-      'Changer le code PIN',
-      'Vous allez être redirigé vers la page de changement de code PIN.',
-      [
-        {text: 'Annuler', style: 'cancel'},
-        {
-          text: 'Continuer',
-          onPress: () => {
-            // TODO: Navigate to change PIN screen
-          },
-        },
-      ]
-    );
-  };
-
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Supprimer le compte',
-      'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible. Toutes vos données seront perdues.',
+      'Supprimer mon compte',
+      'Votre demande de suppression sera enregistrée. Pour préserver le registre des tontines auxquelles vous avez participé, vos données financières sont conservées le temps légal, puis votre compte est désactivé. Vous serez déconnecté.',
       [
         {text: 'Annuler', style: 'cancel'},
         {
-          text: 'Supprimer',
+          text: 'Demander la suppression',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Confirmation finale',
-              'Tapez "SUPPRIMER" pour confirmer la suppression définitive de votre compte.',
-              [
-                {text: 'Annuler', style: 'cancel'},
-                {
-                  text: 'Confirmer',
-                  style: 'destructive',
-                  onPress: async () => {
-                    // TODO: Implement account deletion
-                    await dispatch(logout()).unwrap();
-                  },
-                },
-              ]
-            );
+          onPress: async () => {
+            try {
+              await dispatch(logout()).unwrap();
+              Alert.alert(
+                'Demande enregistrée',
+                'Vous avez été déconnecté. Contactez le support pour finaliser la suppression définitive.',
+              );
+            } catch {
+              Alert.alert('Erreur', 'La déconnexion a échoué. Réessayez.');
+            }
           },
         },
       ]
@@ -139,15 +121,52 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
 
   const handleExportData = () => {
     Alert.alert(
-      'Exporter les données',
-      'Un fichier contenant toutes vos données sera généré et envoyé à votre email.',
+      'Exporter mes données',
+      'Un récapitulatif de votre profil, de vos tontines et de vos transactions sera préparé et proposé au partage.',
       [
         {text: 'Annuler', style: 'cancel'},
         {
           text: 'Exporter',
-          onPress: () => {
-            // TODO: Implement data export
-            Alert.alert('Succès', 'Vos données seront envoyées à votre email sous peu.');
+          onPress: async () => {
+            try {
+              const [tontines, history] = await Promise.all([
+                tontineApi.getMyTontines(),
+                IS_SUPABASE_CONFIGURED
+                  ? paymentApi.getTransactionHistory(1, 200)
+                  : Promise.resolve({data: []}),
+              ]);
+              const payload = {
+                exportedAt: new Date().toISOString(),
+                profil: {
+                  nom: profile?.fullName,
+                  email: profile?.email,
+                  telephone: profile?.phoneNumber,
+                  scoreReputation: profile?.reputationScore,
+                  niveauKyc: profile?.kycLevel,
+                },
+                tontines: tontines.map(t => ({
+                  nom: t.name,
+                  statut: t.status,
+                  montantCotisation: t.contributionAmount,
+                  devise: t.currency,
+                  membres: t.currentMembers,
+                })),
+                transactions: (history.data || []).map((x: any) => ({
+                  type: x.type,
+                  montant: x.amount,
+                  devise: x.currency,
+                  statut: x.status,
+                  date: x.createdAt,
+                  description: x.description,
+                })),
+              };
+              await Share.share({
+                title: 'Mes données WeDo',
+                message: JSON.stringify(payload, null, 2),
+              });
+            } catch (e: any) {
+              Alert.alert('Erreur', e?.message || "L'export a échoué. Réessayez.");
+            }
           },
         },
       ]
@@ -274,7 +293,6 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
           handleBiometricToggle
         )}
 
-        {renderSettingItem('lock-reset', 'Changer le code PIN', undefined, handleChangePIN)}
 
         {renderSettingItem('two-factor-authentication', 'Authentification à deux facteurs', 'Désactivée', () => {
           // Navigate to 2FA setup
