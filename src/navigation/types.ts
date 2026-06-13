@@ -24,6 +24,8 @@ export type RootStackParamList = {
   ManageTontine: {tontineId: string};
   InviteTontine: {tontineId: string; tontineName?: string; inviteCode?: string};
   JoinByCode: undefined;
+  HowItWorks: undefined;
+  Feedback: undefined;
   Kyc: undefined;
   // Trust layer (MVP)
   Registre: {tontineId: string};

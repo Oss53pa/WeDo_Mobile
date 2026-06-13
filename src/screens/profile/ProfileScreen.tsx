@@ -263,7 +263,9 @@ const ProfileScreen: React.FC<Props> = ({navigation}) => {
           <SettingRow icon={<Icon name="shield-check" size={20} color={colors.brand.emerald} />} bg={colors.brand.emeraldSoft} label="Vérification d'identité" onPress={() => navigation.navigate('Kyc')} />
           <SettingRow icon={<Icon name="shield-account" size={20} color={colors.brand.indigo} />} bg={colors.brand.indigoSoft} label="Niveau de vérification (P0 → P2)" onPress={() => navigation.navigate('KycP2' as never)} />
           <SettingRow icon={<LockIcon size={20} color={colors.brand.indigo} />} bg={colors.brand.indigoSoft} label="Sécurité & confidentialité" onPress={() => navigation.navigate('Settings')} />
-          <SettingRow icon={<HelpIcon size={20} color={colors.brand.gold} />} bg={colors.brand.goldSoft} label="Aide & support" />
+          <SettingRow icon={<Icon name="information-outline" size={20} color={colors.brand.emerald} />} bg={colors.brand.emeraldSoft} label="Comment ça marche" onPress={() => (navigation as any).navigate('HowItWorks')} />
+          <SettingRow icon={<Icon name="message-star-outline" size={20} color={colors.brand.terracotta} />} bg={colors.brand.terracottaSoft} label="Votre avis compte" onPress={() => (navigation as any).navigate('Feedback')} />
+          <SettingRow icon={<HelpIcon size={20} color={colors.brand.gold} />} bg={colors.brand.goldSoft} label="Aide & support" onPress={() => (navigation as any).navigate('Feedback')} />
         </View>
 
         <Button title="Se déconnecter" variant="outline" onPress={handleLogout} icon="logout" fullWidth style={{marginTop: spacing.lg}} />

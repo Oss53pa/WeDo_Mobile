@@ -11,6 +11,8 @@ import MainTabNavigator from './MainTabNavigator';
 import ManageTontineScreen from '@screens/tontine/ManageTontineScreen';
 import InviteTontineScreen from '@screens/tontine/InviteTontineScreen';
 import JoinByCodeScreen from '@screens/tontine/JoinByCodeScreen';
+import HowItWorksScreen from '@screens/info/HowItWorksScreen';
+import FeedbackScreen from '@screens/feedback/FeedbackScreen';
 import MemberProfileScreen from '@screens/profile/MemberProfileScreen';
 import KycScreen from '@screens/profile/KycScreen';
 import KycP2Screen from '@screens/profile/KycP2Screen';
@@ -36,6 +38,8 @@ const RootNavigator: React.FC<RootNavigatorProps> = ({isAuthenticated}) => {
           <Stack.Screen name="ManageTontine" component={ManageTontineScreen} />
           <Stack.Screen name="InviteTontine" component={InviteTontineScreen} />
           <Stack.Screen name="JoinByCode" component={JoinByCodeScreen} />
+          <Stack.Screen name="HowItWorks" component={HowItWorksScreen} />
+          <Stack.Screen name="Feedback" component={FeedbackScreen} />
           <Stack.Screen name="MemberProfile" component={MemberProfileScreen} />
           <Stack.Screen name="Kyc" component={KycScreen} />
           <Stack.Screen name="KycP2" component={KycP2Screen} />
