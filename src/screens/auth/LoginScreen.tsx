@@ -22,6 +22,7 @@ import {useTheme, useThemedStyles, typography, spacing, borderRadius, fontFamily
 import {AuthStackScreenProps} from '@navigation/types';
 import {sendOtp} from '@store/slices/auth.slice';
 import {AppDispatch} from '@store/store';
+import {detectCountry} from '@utils/phoneCountry';
 
 type LoginScreenProps = AuthStackScreenProps<'Login'>;
 
@@ -38,6 +39,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const phoneCountry = method === 'phone' ? detectCountry(phone) : null;
 
   const validateEmail = (value: string): boolean => {
     setError('');
@@ -149,6 +152,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
                 containerStyle={{marginTop: spacing.md}}
                 testID="phone-input"
               />
+              {phoneCountry && (
+                <View style={s.countryRow}>
+                  <Text style={s.countryFlag}>{phoneCountry.flag}</Text>
+                  <Text style={s.countryName}>{phoneCountry.name}</Text>
+                  {phoneCountry.region !== 'autre' && (
+                    <Text style={s.countryRegion}>
+                      · Afrique {phoneCountry.region === 'ouest' ? 'de l’Ouest' : 'Centrale'}
+                    </Text>
+                  )}
+                </View>
+              )}
             </>
           )}
 
@@ -211,6 +225,10 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     },
     label: {...typography.h3, color: colors.text.primary, fontWeight: '700'},
     hint: {...typography.caption, color: colors.text.secondary, marginTop: 4},
+    countryRow: {flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm, paddingHorizontal: 2},
+    countryFlag: {fontSize: 18},
+    countryName: {...typography.bodyMedium, color: colors.text.primary, fontWeight: '700'},
+    countryRegion: {...typography.caption, color: colors.text.secondary},
     footer: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xl, gap: 6},
     footerText: {...typography.body, color: colors.text.secondary},
     link: {...typography.bodyMedium, color: colors.accent.main, fontWeight: '700'},

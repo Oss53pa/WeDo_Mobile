@@ -22,6 +22,7 @@ import {useTheme, useThemedStyles, typography, spacing, borderRadius, fontFamily
 import {AuthStackScreenProps} from '@navigation/types';
 import {sendOtp} from '@store/slices/auth.slice';
 import {AppDispatch} from '@store/store';
+import {detectCountry} from '@utils/phoneCountry';
 import {VALIDATION} from '@constants';
 import {AUTH_CONFIG} from '@config';
 
@@ -44,6 +45,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [nameError, setNameError] = useState('');
   const [phoneError, setPhoneError] = useState('');
+
+  const regPhoneCountry = method === 'phone' ? detectCountry(phoneNumber) : null;
   const [emailError, setEmailError] = useState('');
 
   const validateName = (name: string) => {
@@ -173,6 +176,17 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
                 required
                 testID="phone-input"
               />
+              {regPhoneCountry && (
+                <View style={s.countryRow}>
+                  <Text style={s.countryFlag}>{regPhoneCountry.flag}</Text>
+                  <Text style={s.countryName}>{regPhoneCountry.name}</Text>
+                  {regPhoneCountry.region !== 'autre' && (
+                    <Text style={s.countryRegion}>
+                      · Afrique {regPhoneCountry.region === 'ouest' ? 'de l’Ouest' : 'Centrale'}
+                    </Text>
+                  )}
+                </View>
+              )}
               <Input
                 label="Adresse e-mail (optionnel)"
                 placeholder="jean.kouassi@example.com"
@@ -291,6 +305,10 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     progressRow: {marginBottom: spacing.lg},
     step: {...typography.caption, color: colors.text.secondary, marginTop: spacing.xs, textAlign: 'right'},
     methodLabel: {...typography.captionMedium, color: colors.text.secondary, marginBottom: spacing.xs, fontWeight: '600'},
+    countryRow: {flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.xs, marginBottom: spacing.sm, paddingHorizontal: 2},
+    countryFlag: {fontSize: 18},
+    countryName: {...typography.bodyMedium, color: colors.text.primary, fontWeight: '700'},
+    countryRegion: {...typography.caption, color: colors.text.secondary},
     terms: {...typography.caption, color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md, lineHeight: 18},
     termsLink: {color: colors.accent.main, fontWeight: '600'},
     footer: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.lg, gap: 6},
