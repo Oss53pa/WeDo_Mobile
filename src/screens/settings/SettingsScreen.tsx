@@ -515,13 +515,13 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
           // Navigate to help center
         })}
 
-        {renderSettingItem('file-document', "Conditions d'utilisation", undefined, () => {
-          // Navigate to terms
-        })}
+        {renderSettingItem('file-document', "Conditions d'utilisation", undefined, () =>
+          (navigation as any).navigate('Legal', {doc: 'cgu'}),
+        )}
 
-        {renderSettingItem('shield-lock', 'Politique de confidentialite', undefined, () => {
-          // Navigate to privacy policy
-        })}
+        {renderSettingItem('shield-lock', 'Politique de confidentialité', undefined, () =>
+          (navigation as any).navigate('Legal', {doc: 'privacy'}),
+        )}
 
         {renderSettingItem('information', 'À propos', 'Version 1.0.0', () => {
           // Navigate to about
