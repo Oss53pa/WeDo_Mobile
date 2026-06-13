@@ -426,6 +426,7 @@ export interface JoinByCodeResult {
  */
 export const rejoindreTontineParCode = async (
   code: string,
+  nbTetes: number = 1,
 ): Promise<JoinByCodeResult> => {
   if (!IS_SUPABASE_CONFIGURED) {
     const demo = demoPublicTontines[0];
@@ -433,6 +434,7 @@ export const rejoindreTontineParCode = async (
   }
   const {data, error} = await supabase.rpc('rejoindre_tontine_par_code', {
     p_code: code,
+    p_nb_tetes: Math.max(1, Math.floor(nbTetes)),
   });
   if (error) throw new Error(error.message);
   return data as JoinByCodeResult;

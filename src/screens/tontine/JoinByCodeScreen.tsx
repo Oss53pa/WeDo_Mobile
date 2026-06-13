@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import Animated, {FadeInDown} from 'react-native-reanimated';
-import {Button, ScreenHeader, GradientCard, useToast} from '@components/common';
+import {Button, ScreenHeader, GradientCard, useToast, PressableScale, Icon} from '@components/common';
 import {KenteStripe} from '@components/patterns';
 import {
   useTheme,
@@ -36,6 +36,7 @@ const JoinByCodeScreen: React.FC<Props> = ({navigation}) => {
   const {show} = useToast();
 
   const [code, setCode] = useState('');
+  const [joinTetes, setJoinTetes] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
   const cleaned = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -47,7 +48,7 @@ const JoinByCodeScreen: React.FC<Props> = ({navigation}) => {
     }
     setIsLoading(true);
     try {
-      const res = await tontineApi.rejoindreTontineParCode(cleaned);
+      const res = await tontineApi.rejoindreTontineParCode(cleaned, joinTetes);
       if (res?.success) {
         show(
           res.already
@@ -114,6 +115,25 @@ const JoinByCodeScreen: React.FC<Props> = ({navigation}) => {
             <Text style={s.counter}>
               {cleaned.length}/{CODE_LENGTH}
             </Text>
+
+            <View style={s.tetesPicker}>
+              <View style={{flex: 1}}>
+                <Text style={s.tetesLabel}>Mes têtes (parts)</Text>
+                <Text style={s.tetesHint}>
+                  1 tête = 1 cotisation/tour et 1 place. Prenez-en plusieurs pour recevoir davantage.
+                </Text>
+              </View>
+              <View style={s.stepper}>
+                <PressableScale style={s.stepBtn} onPress={() => setJoinTetes(v => Math.max(1, v - 1))}>
+                  <Icon name="minus" size={18} color={colors.text.primary} />
+                </PressableScale>
+                <Text style={s.stepVal}>{joinTetes}</Text>
+                <PressableScale style={s.stepBtn} onPress={() => setJoinTetes(v => Math.min(20, v + 1))}>
+                  <Icon name="plus" size={18} color={colors.text.primary} />
+                </PressableScale>
+              </View>
+            </View>
+
             <Button
               title={copy.join}
               onPress={handleJoin}
@@ -174,6 +194,31 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
       marginTop: spacing.xs,
       marginBottom: spacing.md,
     },
+    tetesPicker: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      marginBottom: spacing.md,
+      backgroundColor: colors.surface.sunken,
+      borderRadius: borderRadius.lg,
+      padding: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border.subtle,
+    },
+    tetesLabel: {...typography.bodyMedium, color: colors.text.primary, fontWeight: '700'},
+    tetesHint: {...typography.caption, color: colors.text.secondary, marginTop: 2},
+    stepper: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    stepBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface.default,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+    },
+    stepVal: {...typography.h3, color: colors.text.primary, fontWeight: '800', minWidth: 24, textAlign: 'center'},
   });
 
 export default JoinByCodeScreen;
