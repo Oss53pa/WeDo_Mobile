@@ -44,6 +44,7 @@ export type SchemePreference = ColorScheme | 'system';
 const STORAGE_KEY = '@wedo/color-scheme';
 const AMBIANCE_KEY = '@wedo/ambiance';
 const ARGOT_KEY = '@wedo/argot';
+const ARGOT_MANUAL_KEY = '@wedo/argot-manual';
 
 export interface ThemedTokens {
   scheme: ColorScheme;
@@ -76,7 +77,9 @@ export interface ThemeContextValue extends ThemedTokens {
   setScheme: (pref: SchemePreference) => void;
   toggleScheme: () => void;
   setAmbiance: (key: AmbianceKey) => void;
-  setArgot: (argot: ArgotKey) => void;
+  /** Set the active argot. `manual: true` = explicit user choice (in Réglages),
+   *  which then takes precedence over phone-based auto-detection. */
+  setArgot: (argot: ArgotKey, manual?: boolean) => void;
 }
 
 const buildTokens = (
@@ -129,6 +132,9 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
   const [preference, setPreference] = useState<SchemePreference>('system');
   const [ambiance, setAmbianceState] = useState<AmbianceKey>('standard');
   const [argot, setArgotState] = useState<ArgotKey>('aucun');
+  // True once the user has picked a country/argot by hand — auto-detection
+  // (from the phone indicatif) must not override an explicit choice.
+  const argotManualRef = useRef(false);
   const [systemScheme, setSystemScheme] = useState<ColorScheme>(
     Appearance.getColorScheme() === 'dark' ? 'dark' : 'light',
   );
@@ -138,11 +144,13 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
   useEffect(() => {
     (async () => {
       try {
-        const [savedScheme, savedAmbiance, savedArgot] = await Promise.all([
+        const [savedScheme, savedAmbiance, savedArgot, savedArgotManual] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY),
           AsyncStorage.getItem(AMBIANCE_KEY),
           AsyncStorage.getItem(ARGOT_KEY),
+          AsyncStorage.getItem(ARGOT_MANUAL_KEY),
         ]);
+        if (savedArgotManual === '1') argotManualRef.current = true;
         if (savedScheme === 'light' || savedScheme === 'dark' || savedScheme === 'system') {
           setPreference(savedScheme);
         }
@@ -190,7 +198,13 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
     AsyncStorage.setItem(AMBIANCE_KEY, key).catch(() => {});
   }, []);
 
-  const setArgot = useCallback((next: ArgotKey) => {
+  const setArgot = useCallback((next: ArgotKey, manual = false) => {
+    // Auto-detection (manual=false) must never override an explicit user choice.
+    if (!manual && argotManualRef.current) return;
+    if (manual) {
+      argotManualRef.current = true;
+      AsyncStorage.setItem(ARGOT_MANUAL_KEY, '1').catch(() => {});
+    }
     setArgotState(prev => {
       if (prev === next) return prev;
       AsyncStorage.setItem(ARGOT_KEY, next).catch(() => {});

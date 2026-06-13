@@ -44,6 +44,14 @@ import {AppDispatch, RootState} from '@store/store';
 import {logout} from '@store/slices/auth.slice';
 import {setBiometricEnabled} from '@store/slices/auth.slice';
 
+// Country → Élan argot (nouchi / camfranglais / gabon). Explicit choice so users
+// who signed up by e-mail (no phone to detect) still get their country's slang.
+const ARGOT_OPTIONS = [
+  {key: 'nouchi' as const, flag: '🇨🇮', label: "Côte d'Ivoire"},
+  {key: 'camfranglais' as const, flag: '🇨🇲', label: 'Cameroun'},
+  {key: 'gabon' as const, flag: '🇬🇦', label: 'Gabon'},
+];
+
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Settings'>;
 
 interface Props {
@@ -55,7 +63,7 @@ type Currency = 'XOF' | 'XAF' | 'USD' | 'EUR';
 
 const SettingsScreen: React.FC<Props> = ({navigation}) => {
   const dispatch = useDispatch<AppDispatch>();
-  const {colors, preference, setScheme, ambiance, setAmbiance} = useTheme();
+  const {colors, preference, setScheme, ambiance, setAmbiance, argot, setArgot} = useTheme();
   const s = useThemedStyles(makeStyles);
   const {biometricEnabled} = useSelector((state: RootState) => state.auth);
   const {profile} = useSelector((state: RootState) => state.user);
@@ -297,6 +305,29 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
               </PressableScale>
             );
           })}
+        </View>
+
+        {/* Country / slang — drives the Élan ambiance words (nouchi / camfranglais / gabon).
+            Explicit choice because phone-based auto-detection can't work without a number. */}
+        <View style={s.argotBlock}>
+          <Text style={s.argotTitle}>Mon pays</Text>
+          <Text style={s.sectionHint}>
+            Choisis ton pays : en ambiance Élan, l'app parle ton argot (nouchi, camfranglais, gabonais).
+          </Text>
+          <View style={s.argotRow}>
+            {ARGOT_OPTIONS.map(o => {
+              const active = o.key === argot;
+              return (
+                <PressableScale
+                  key={o.key}
+                  onPress={() => setArgot(o.key, true)}
+                  style={[s.argotChip, active && {borderColor: colors.accent.main, backgroundColor: colors.accent.main + '14', borderWidth: 2}]}>
+                  <Text style={s.argotFlag}>{o.flag}</Text>
+                  <Text style={[s.argotName, active && {color: colors.accent.main, fontWeight: '800'}]}>{o.label}</Text>
+                </PressableScale>
+              );
+            })}
+          </View>
         </View>
       </Card>
 
@@ -583,6 +614,22 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
       gap: spacing.sm,
       marginTop: spacing.sm,
     },
+    argotBlock: {marginTop: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border.subtle, paddingTop: spacing.md},
+    argotTitle: {...typography.captionMedium, color: colors.text.primary, fontWeight: '700', marginBottom: 2},
+    argotRow: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm},
+    argotChip: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xs,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.default,
+    },
+    argotFlag: {fontSize: 24},
+    argotName: {...typography.caption, color: colors.text.secondary, fontWeight: '600', textAlign: 'center'},
     ambCard: {
       width: '47%',
       flexGrow: 1,
