@@ -27,7 +27,7 @@ import {
   type AdinkraKey,
   type AmbianceCopy,
 } from './ambiances';
-import type {AfricaRegion} from '../utils/phoneCountry';
+import type {ArgotKey} from '../utils/phoneCountry';
 import {typography} from './typography';
 import {
   spacing,
@@ -43,7 +43,7 @@ export type SchemePreference = ColorScheme | 'system';
 
 const STORAGE_KEY = '@wedo/color-scheme';
 const AMBIANCE_KEY = '@wedo/ambiance';
-const REGION_KEY = '@wedo/region';
+const ARGOT_KEY = '@wedo/argot';
 
 export interface ThemedTokens {
   scheme: ColorScheme;
@@ -57,10 +57,10 @@ export interface ThemedTokens {
   copy: AmbianceCopy;
   greeting: string;
   balanceLabel: string;
-  /** Word for "tontine" in the active ambiance/region (Gbonhi / njangi / tontine). */
+  /** Word for "tontine" in the active ambiance/argot (Gbonhi / njangi / klan…). */
   tontineWord: string;
-  /** User's African region, derived from their phone indicatif. */
-  region: AfricaRegion;
+  /** Active argot (country slang), derived from the user's phone indicatif. */
+  argot: ArgotKey;
   typography: typeof typography;
   spacing: typeof spacing;
   borderRadius: typeof borderRadius;
@@ -76,13 +76,13 @@ export interface ThemeContextValue extends ThemedTokens {
   setScheme: (pref: SchemePreference) => void;
   toggleScheme: () => void;
   setAmbiance: (key: AmbianceKey) => void;
-  setRegion: (region: AfricaRegion) => void;
+  setArgot: (argot: ArgotKey) => void;
 }
 
 const buildTokens = (
   scheme: ColorScheme,
   ambiance: AmbianceKey,
-  region: AfricaRegion,
+  argot: ArgotKey,
 ): ThemedTokens => {
   const {colors, gradients} = applyAmbiance(
     schemes[scheme],
@@ -90,7 +90,7 @@ const buildTokens = (
     ambiance,
   );
   const def = AMBIANCES[ambiance] ?? AMBIANCES.standard;
-  const copy = resolveAmbianceCopy(ambiance, region);
+  const copy = resolveAmbianceCopy(ambiance, argot);
   return {
     scheme,
     isDark: scheme === 'dark',
@@ -102,7 +102,7 @@ const buildTokens = (
     greeting: copy.greeting,
     balanceLabel: copy.balanceLabel,
     tontineWord: copy.tontineWord,
-    region,
+    argot,
     typography,
     spacing,
     borderRadius,
@@ -115,12 +115,12 @@ const buildTokens = (
 };
 
 const ThemeContext = createContext<ThemeContextValue>({
-  ...buildTokens('light', 'standard', 'autre'),
+  ...buildTokens('light', 'standard', 'aucun'),
   preference: 'system',
   setScheme: () => {},
   toggleScheme: () => {},
   setAmbiance: () => {},
-  setRegion: () => {},
+  setArgot: () => {},
 });
 
 export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
@@ -128,7 +128,7 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
 }) => {
   const [preference, setPreference] = useState<SchemePreference>('system');
   const [ambiance, setAmbianceState] = useState<AmbianceKey>('standard');
-  const [region, setRegionState] = useState<AfricaRegion>('autre');
+  const [argot, setArgotState] = useState<ArgotKey>('aucun');
   const [systemScheme, setSystemScheme] = useState<ColorScheme>(
     Appearance.getColorScheme() === 'dark' ? 'dark' : 'light',
   );
@@ -138,10 +138,10 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
   useEffect(() => {
     (async () => {
       try {
-        const [savedScheme, savedAmbiance, savedRegion] = await Promise.all([
+        const [savedScheme, savedAmbiance, savedArgot] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY),
           AsyncStorage.getItem(AMBIANCE_KEY),
-          AsyncStorage.getItem(REGION_KEY),
+          AsyncStorage.getItem(ARGOT_KEY),
         ]);
         if (savedScheme === 'light' || savedScheme === 'dark' || savedScheme === 'system') {
           setPreference(savedScheme);
@@ -149,8 +149,11 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
         if (savedAmbiance && savedAmbiance in AMBIANCES) {
           setAmbianceState(savedAmbiance as AmbianceKey);
         }
-        if (savedRegion === 'ouest' || savedRegion === 'centre' || savedRegion === 'autre') {
-          setRegionState(savedRegion);
+        if (
+          savedArgot === 'nouchi' || savedArgot === 'camfranglais' ||
+          savedArgot === 'gabon' || savedArgot === 'aucun'
+        ) {
+          setArgotState(savedArgot);
         }
       } catch {
         // ignore — fall back to defaults
@@ -187,24 +190,24 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
     AsyncStorage.setItem(AMBIANCE_KEY, key).catch(() => {});
   }, []);
 
-  const setRegion = useCallback((next: AfricaRegion) => {
-    setRegionState(prev => {
+  const setArgot = useCallback((next: ArgotKey) => {
+    setArgotState(prev => {
       if (prev === next) return prev;
-      AsyncStorage.setItem(REGION_KEY, next).catch(() => {});
+      AsyncStorage.setItem(ARGOT_KEY, next).catch(() => {});
       return next;
     });
   }, []);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
-      ...buildTokens(scheme, ambiance, region),
+      ...buildTokens(scheme, ambiance, argot),
       preference,
       setScheme,
       toggleScheme,
       setAmbiance,
-      setRegion,
+      setArgot,
     }),
-    [scheme, ambiance, region, preference, setScheme, toggleScheme, setAmbiance, setRegion],
+    [scheme, ambiance, argot, preference, setScheme, toggleScheme, setAmbiance, setArgot],
   );
 
   return (

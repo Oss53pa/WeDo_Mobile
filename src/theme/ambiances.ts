@@ -11,7 +11,7 @@
  */
 import type {AppColors} from './colors';
 import type {AppGradients, GradientDef} from './gradients';
-import type {AfricaRegion} from '../utils/phoneCountry';
+import type {ArgotKey} from '../utils/phoneCountry';
 
 export type AmbianceKey = 'standard' | 'heritage' | 'elan' | 'souverain';
 export type AdinkraKey = 'sankofa' | 'nkonsonkonson' | 'adinkrahene' | 'kente';
@@ -56,11 +56,11 @@ export interface AmbianceDef {
   /** The ambiance's full voice pack (default / Ouest for Élan). */
   copy: AmbianceCopy;
   /**
-   * Regional voice overrides — only Élan varies by the user's region, derived
-   * from their phone indicatif: 'ouest' → nouchi (the base), 'centre' →
-   * camfranglais. Each region only needs to override the words that change.
+   * Slang overrides keyed by COUNTRY-level argot (from the phone indicatif):
+   * 'nouchi' (Côte d'Ivoire — the Élan base), 'camfranglais' (Cameroun),
+   * 'gabon' (Gabon). Each only overrides the words that change.
    */
-  regional?: Partial<Record<AfricaRegion, Partial<AmbianceCopy>>>;
+  regional?: Partial<Record<ArgotKey, Partial<AmbianceCopy>>>;
   /** Swatch shown in the selector. */
   swatch: string[];
   /** Animation character. */
@@ -101,7 +101,8 @@ export const AMBIANCES: Record<AmbianceKey, AmbianceDef> = {
     tagline: 'Sankofa · la sagesse qui se transmet',
     description: 'Pour nos mamans et les cercles de tradition. Or royal, vert récolte, terre des ancêtres.',
     adinkra: 'sankofa',
-    // "Français facile" — words our mamans & aînés read without effort.
+    // "Français facile" — words our mamans & aînés read without effort. Only the
+    // greeting takes a warm local touch per country; the rest stays plain French.
     copy: {
       greeting: 'Akwaba',
       balanceLabel: 'Ton argent est gardé',
@@ -112,6 +113,10 @@ export const AMBIANCES: Record<AmbianceKey, AmbianceDef> = {
       join: 'Entrer dans un groupe',
       help: 'Comment ça marche',
       nextBeneficiary: 'À qui le tour',
+    },
+    regional: {
+      camfranglais: {greeting: 'On est ensemble'},
+      gabon: {greeting: 'Mbolo !'},
     },
     swatch: ['#9E7320', '#D4A03C', '#1F7A58', '#6B4A29'],
     motion: 'calme',
@@ -128,33 +133,42 @@ export const AMBIANCES: Record<AmbianceKey, AmbianceDef> = {
     tagline: 'Nkonsonkonson · nous sommes liés',
     description: 'Pour les jeunes. Couleurs franches du Kente, formes ludiques, plus de mouvement.',
     adinkra: 'nkonsonkonson',
-    // Base = Afrique de l'Ouest / nouchi (Côte d'Ivoire, Mali, Burkina…).
-    // Positif & fun : Djê = l'argent, Gbonhi = le groupe/la bande.
+    // Base = Côte d'Ivoire / nouchi. Djê = l'argent, Gbonhi = le groupe/la bande.
     copy: {
       greeting: 'Yo Môgô',
       balanceLabel: 'Ton Djê est calé',
       tontineWord: 'Gbonhi',
       tontinesTab: 'Gbonhi',
       myTontines: 'Mes Gbonhi',
-      pay: 'Envoyer le Djê',
-      join: 'Rejoindre Gbonhi',
-      help: 'Ça gère comment',
+      pay: 'Envoie le Djê',
+      join: 'Rentrer dans le Gbonhi',
+      help: 'Ça marche comment',
       nextBeneficiary: "C'est qui le prochain",
     },
     regional: {
-      // Afrique Centrale / camfranglais (Cameroun, Gabon, Congo…). Positif &
-      // chaleureux : « Ashia » = solidarité/compassion ; « njangi » = tontine ;
-      // « moni » = l'argent. (Brouillon — à valider/affiner avec l'utilisateur.)
-      centre: {
-        greeting: 'Ashia',
-        balanceLabel: 'Ton moni est safe',
+      // Cameroun — camfranglais / pidgin. moni = l'argent, njangi = tontine.
+      camfranglais: {
+        greeting: 'Mbom, on dit quoi ?',
+        balanceLabel: 'Ton moni est au calme',
         tontineWord: 'njangi',
         tontinesTab: 'Njangi',
         myTontines: 'Mes njangi',
-        pay: 'Envoyer le moni',
-        join: 'Rejoindre le njangi',
-        help: 'Ça se passe comment',
-        nextBeneficiary: "C'est qui le next",
+        pay: 'Envoie le moni',
+        join: 'Rentrer dans le njangi',
+        help: 'Ça se passe how ?',
+        nextBeneficiary: "C'est le tour de qui ?",
+      },
+      // Gabon — argot local. Do = l'argent, klan = le groupe.
+      gabon: {
+        greeting: 'Mani Top ?',
+        balanceLabel: 'Ton Do est oklm',
+        tontineWord: 'klan',
+        tontinesTab: 'Klans',
+        myTontines: 'Mes klans',
+        pay: 'Envoie les Do',
+        join: 'Rentrer dans le klan',
+        help: "C'est quoi le deal",
+        nextBeneficiary: 'A qui le tour ?',
       },
     },
     swatch: ['#D4A03C', '#1F7A58', '#B23A4E', '#666BB3'],
@@ -192,15 +206,16 @@ export const AMBIANCE_LIST: AmbianceDef[] = [
 ];
 
 /**
- * Resolve the ambiance's full voice pack for a given region. Only Élan varies by
- * region (nouchi ↔ camfranglais); every other ambiance ignores it.
+ * Resolve the ambiance's full voice pack for a given argot (country slang).
+ * Élan swaps its whole pack (nouchi / camfranglais / gabon); Héritage only swaps
+ * its greeting; the others ignore it.
  */
 export const resolveAmbianceCopy = (
   key: AmbianceKey,
-  region: AfricaRegion = 'autre',
+  argot: ArgotKey = 'aucun',
 ): AmbianceCopy => {
   const amb = AMBIANCES[key] ?? AMBIANCES.standard;
-  const r = amb.regional?.[region];
+  const r = amb.regional?.[argot];
   return r ? {...amb.copy, ...r} : amb.copy;
 };
 

@@ -1,4 +1,4 @@
-import {detectCountry, regionOf} from '../phoneCountry';
+import {detectCountry, regionOf, argotOf} from '../phoneCountry';
 import {resolveAmbianceCopy} from '../../theme/ambiances';
 
 describe('detectCountry', () => {
@@ -28,33 +28,54 @@ describe('detectCountry', () => {
   });
 });
 
-describe('resolveAmbianceCopy — Élan regional jargon', () => {
-  it('uses nouchi (Ouest) by default', () => {
-    const ouest = resolveAmbianceCopy('elan', 'ouest');
-    expect(ouest.greeting).toBe('Yo Môgô');
-    expect(ouest.balanceLabel).toBe('Ton Djê est calé');
-    expect(ouest.tontineWord).toBe('Gbonhi');
-    expect(ouest.pay).toBe('Envoyer le Djê');
-    expect(ouest.nextBeneficiary).toBe("C'est qui le prochain");
+describe('argotOf — country-level slang key', () => {
+  it('maps each country to its argot', () => {
+    expect(argotOf('+2250700000000')).toBe('nouchi');       // Côte d'Ivoire
+    expect(argotOf('+237690000000')).toBe('camfranglais');  // Cameroun
+    expect(argotOf('+241060000000')).toBe('gabon');         // Gabon
+    expect(argotOf('+221770000000')).toBe('nouchi');        // autre Ouest -> nouchi
+    expect(argotOf('+243800000000')).toBe('camfranglais');  // autre Centre -> camfranglais
+    expect(argotOf('+33612345678')).toBe('aucun');          // hors zone
+  });
+});
+
+describe('resolveAmbianceCopy — Élan argot par pays', () => {
+  it('Côte d’Ivoire — nouchi (base)', () => {
+    const c = resolveAmbianceCopy('elan', 'nouchi');
+    expect(c.greeting).toBe('Yo Môgô');
+    expect(c.balanceLabel).toBe('Ton Djê est calé');
+    expect(c.tontineWord).toBe('Gbonhi');
+    expect(c.pay).toBe('Envoie le Djê');
+    expect(c.join).toBe('Rentrer dans le Gbonhi');
+    expect(c.help).toBe('Ça marche comment');
   });
 
-  it('switches to camfranglais for Afrique Centrale', () => {
-    const centre = resolveAmbianceCopy('elan', 'centre');
-    expect(centre.greeting).toBe('Ashia');
-    expect(centre.tontineWord).toBe('njangi');
-    expect(centre.myTontines).toBe('Mes njangi');
+  it('Cameroun — camfranglais', () => {
+    const c = resolveAmbianceCopy('elan', 'camfranglais');
+    expect(c.greeting).toBe('Mbom, on dit quoi ?');
+    expect(c.balanceLabel).toBe('Ton moni est au calme');
+    expect(c.myTontines).toBe('Mes njangi');
+    expect(c.nextBeneficiary).toBe("C'est le tour de qui ?");
   });
 
-  it('Héritage speaks "français facile", region-independent', () => {
-    const h = resolveAmbianceCopy('heritage', 'centre');
-    expect(h.greeting).toBe('Akwaba');
-    expect(h.balanceLabel).toBe('Ton argent est gardé');
-    expect(h.myTontines).toBe('Mes groupes');
+  it('Gabon — argot local', () => {
+    const c = resolveAmbianceCopy('elan', 'gabon');
+    expect(c.greeting).toBe('Mani Top ?');
+    expect(c.balanceLabel).toBe('Ton Do est oklm');
+    expect(c.tontineWord).toBe('klan');
+    expect(c.pay).toBe('Envoie les Do');
   });
 
-  it('Standard/Souverain keep neutral French and ignore the region', () => {
-    expect(resolveAmbianceCopy('standard', 'ouest').tontineWord).toBe('tontine');
-    expect(resolveAmbianceCopy('souverain', 'centre').greeting).toBe('Bonsoir');
-    expect(resolveAmbianceCopy('souverain', 'centre').pay).toBe('Cotiser');
+  it('Héritage — salut local, reste en français facile', () => {
+    expect(resolveAmbianceCopy('heritage', 'nouchi').greeting).toBe('Akwaba');
+    expect(resolveAmbianceCopy('heritage', 'camfranglais').greeting).toBe('On est ensemble');
+    expect(resolveAmbianceCopy('heritage', 'gabon').greeting).toBe('Mbolo !');
+    expect(resolveAmbianceCopy('heritage', 'gabon').myTontines).toBe('Mes groupes');
+  });
+
+  it('Standard/Souverain ignorent l’argot', () => {
+    expect(resolveAmbianceCopy('standard', 'nouchi').tontineWord).toBe('tontine');
+    expect(resolveAmbianceCopy('souverain', 'gabon').greeting).toBe('Bonsoir');
+    expect(resolveAmbianceCopy('souverain', 'camfranglais').pay).toBe('Cotiser');
   });
 });

@@ -23,7 +23,7 @@ const WEB_INSETS = {top: 50, bottom: 24, left: 0, right: 0};
 import {Provider, useDispatch, useSelector} from 'react-redux';
 import {RootNavigator} from '@navigation';
 import {ThemeProvider, useTheme} from '@theme';
-import {regionOf} from '@utils/phoneCountry';
+import {argotOf} from '@utils/phoneCountry';
 import {store, RootState, AppDispatch} from '@store/store';
 import {LoadingSpinner, ErrorBoundary, ToastProvider, useToast} from '@components/common';
 import {restoreSession, clearSession, setLoading, demoLogin} from '@store/slices/auth.slice';
@@ -42,14 +42,14 @@ import type {User} from '@types';
  */
 const AppContent: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const {colors, isDark, setRegion} = useTheme();
+  const {colors, isDark, setArgot} = useTheme();
   const {isAuthenticated, isRestoring, user} = useSelector((state: RootState) => state.auth);
 
-  // Élan ambiance speaks the user's regional jargon (nouchi / camfranglais);
-  // the region is derived from their phone indicatif, no DB column needed.
+  // Élan ambiance speaks the user's country slang (nouchi / camfranglais / gabon),
+  // derived from their phone indicatif — no DB column needed.
   useEffect(() => {
-    setRegion(regionOf(user?.phoneNumber));
-  }, [user?.phoneNumber, setRegion]);
+    setArgot(argotOf(user?.phoneNumber));
+  }, [user?.phoneNumber, setArgot]);
 
   useEffect(() => {
     // TEMP dev bypass: enter the app with a demo user and skip Supabase auth

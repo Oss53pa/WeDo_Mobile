@@ -75,3 +75,22 @@ export const detectCountry = (phone?: string | null): CountryInfo | null => {
 /** African region for a phone number ('autre' when unknown / non-African). */
 export const regionOf = (phone?: string | null): AfricaRegion =>
   detectCountry(phone)?.region ?? 'autre';
+
+/**
+ * Slang variant ("argot") for the Élan ambiance, keyed by COUNTRY (finer than
+ * region): Côte d'Ivoire → nouchi, Cameroun → camfranglais, Gabon → gabon.
+ * Other West-African countries fall back to nouchi, other Central to camfranglais,
+ * everything else to 'aucun' (no slang → base French/nouchi default).
+ */
+export type ArgotKey = 'nouchi' | 'camfranglais' | 'gabon' | 'aucun';
+
+export const argotOf = (phone?: string | null): ArgotKey => {
+  const c = detectCountry(phone);
+  if (!c) return 'aucun';
+  if (c.code === '225') return 'nouchi';
+  if (c.code === '237') return 'camfranglais';
+  if (c.code === '241') return 'gabon';
+  if (c.region === 'ouest') return 'nouchi';
+  if (c.region === 'centre') return 'camfranglais';
+  return 'aucun';
+};
