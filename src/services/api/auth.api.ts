@@ -2,7 +2,10 @@
  * Auth API Service
  * Handles authentication via Supabase Auth with two passwordless methods:
  *  - Email OTP (free): a code is emailed; verify with type: 'email'.
- *    Requires the Supabase "Magic Link" email template to expose {{ .Token }}.
+ *    Requires BOTH the "Confirm signup" (new users) AND "Magic Link" (returning
+ *    users) Supabase email templates to expose {{ .Token }} — otherwise new
+ *    sign-ups get a confirmation LINK instead of the code. The shared Atlas Studio
+ *    template reads {{ .Data.app }} = 'WeDo' (passed below) to brand per app.
  *  - Phone OTP: a code is sent by SMS or WhatsApp; verify with type: 'sms'.
  *    Requires a Twilio (Verify) provider configured in the Supabase dashboard.
  *    The delivery channel is set via AUTH_CONFIG.phoneOtpChannel.
@@ -18,6 +21,17 @@ import {User} from '@types';
  * The user must include the country code (e.g. +225, +221).
  */
 const normalizePhone = (phone: string): string => phone.replace(/[^\d+]/g, '');
+
+/**
+ * Per-app metadata read by the shared Atlas Studio OTP email template
+ * ({{ .Data.app }}, {{ .Data.app_tagline }}…). Passing `app: 'WeDo'` makes the
+ * code email render the WeDo brand (Grand Hotel wordmark) instead of the generic
+ * Atlas Studio fallback. Set on user creation; also kept fresh on each sign-in.
+ */
+const WEDO_OTP_META = {
+  app: 'WeDo',
+  app_tagline: 'Tontines, en confiance',
+} as const;
 
 /**
  * Map a Supabase auth user id to our app User by reading its profile row.
@@ -84,7 +98,7 @@ const handleOtpSendError = (error: {message: string} | null): {success: boolean}
 export const sendOtp = async (email: string): Promise<{success: boolean}> => {
   const {error} = await supabase.auth.signInWithOtp({
     email: email.trim().toLowerCase(),
-    options: {shouldCreateUser: true},
+    options: {shouldCreateUser: true, data: {...WEDO_OTP_META}},
   });
   return handleOtpSendError(error);
 };
@@ -118,7 +132,7 @@ export const verifyOtp = async (
 export const sendOtpPhone = async (phone: string): Promise<{success: boolean}> => {
   const {error} = await supabase.auth.signInWithOtp({
     phone: normalizePhone(phone),
-    options: {shouldCreateUser: true, channel: AUTH_CONFIG.phoneOtpChannel},
+    options: {shouldCreateUser: true, channel: AUTH_CONFIG.phoneOtpChannel, data: {...WEDO_OTP_META}},
   });
   return handleOtpSendError(error);
 };
@@ -137,6 +151,7 @@ export const registerPhone = async (data: {
       shouldCreateUser: true,
       channel: AUTH_CONFIG.phoneOtpChannel,
       data: {
+        ...WEDO_OTP_META,
         full_name: data.fullName,
         email: data.email,
       },
@@ -188,6 +203,7 @@ export const register = async (data: {
     options: {
       shouldCreateUser: true,
       data: {
+        ...WEDO_OTP_META,
         full_name: data.fullName,
         phone: data.phone,
       },
