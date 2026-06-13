@@ -40,6 +40,8 @@ import {AppDispatch, RootState} from '@store/store';
 import {fetchTontineDetail} from '@store/slices/tontine.slice';
 import * as tontineApi from '@services/api/tontine.api';
 import {formatCurrency} from '@utils/formatting';
+import {computeActivationFee} from '@utils/activationFee';
+import {formatFcfa} from '@utils/money';
 
 type Nav = StackNavigationProp<RootStackParamList, 'ManageTontine'>;
 type Route = RouteProp<RootStackParamList, 'ManageTontine'>;
@@ -106,29 +108,46 @@ const ManageTontineScreen: React.FC<{navigation: Nav; route: Route}> = ({
       : colors.text.tertiary;
 
   const startTontine = () => {
-    Alert.alert(
-      'Démarrer la tontine',
-      'Une fois démarrée, plus aucun membre ne pourra rejoindre. Continuer ?',
-      [
-        {text: 'Annuler', style: 'cancel'},
-        {
-          text: 'Démarrer',
-          style: 'default',
-          onPress: async () => {
-            try {
-              setBusy(true);
-              await tontineApi.startTontine(tontineId);
-              await load();
-              Alert.alert('Tontine démarrée', 'La tontine est maintenant active.');
-            } catch (e: any) {
-              Alert.alert('Erreur', e?.message ?? "Impossible de démarrer la tontine.");
-            } finally {
-              setBusy(false);
-            }
-          },
-        },
-      ],
+    // Activation-fee preview (result in clear language — never the formula).
+    const nbParticipants = Number(t?.currentMembers ?? t?.members?.length ?? 0);
+    const nbTours = Number(t?.totalRounds || t?.totalMembers || nbParticipants);
+    const fee = computeActivationFee(
+      Number(t?.contributionAmount ?? 0),
+      nbParticipants,
+      nbTours,
+      Number(t?.tauxServiceBps ?? 80),
     );
+    const preview =
+      nbParticipants > 0
+        ? `Vous sécurisez ${formatFcfa(fee.mts)} sur ${nbTours} tours.\n` +
+          `Frais d'activation : ${formatFcfa(fee.base)} par membre, payé une seule fois au lancement (vous y compris).\n\n` +
+          'Une fois démarrée, plus aucun membre ne pourra rejoindre. Continuer ?'
+        : 'Une fois démarrée, plus aucun membre ne pourra rejoindre. Continuer ?';
+
+    Alert.alert('Démarrer la tontine', preview, [
+      {text: 'Annuler', style: 'cancel'},
+      {
+        text: 'Démarrer',
+        style: 'default',
+        onPress: async () => {
+          try {
+            setBusy(true);
+            const res = await tontineApi.startTontine(tontineId);
+            await load();
+            Alert.alert(
+              'Tontine démarrée',
+              res?.fraisTotal
+                ? `La tontine est active. Frais d'activation dus : ${formatFcfa(BigInt(res.fraisTotal))} au total. Chaque membre règle sa part une fois.`
+                : 'La tontine est maintenant active.',
+            );
+          } catch (e: any) {
+            Alert.alert('Erreur', e?.message ?? "Impossible de démarrer la tontine.");
+          } finally {
+            setBusy(false);
+          }
+        },
+      },
+    ]);
   };
 
   const endTontine = () => {

@@ -95,6 +95,20 @@ Deno.serve(async (req) => {
             related_id: tx.tontine_id,
           });
         }
+      } else if (tx.type === "Fee" && tx.reference_id) {
+        // Activation fee → mark the member's frais_paye (revenue, not escrow).
+        await admin
+          .from("tontine_members")
+          .update({ frais_paye: true, frais_paye_at: new Date().toISOString() })
+          .eq("id", tx.reference_id)
+          .eq("frais_paye", false);
+        await admin.from("notifications").insert({
+          user_id: tx.user_id,
+          title: "Frais d'activation réglés",
+          body: `Vos frais d'activation de ${tx.amount} ${tx.currency} sont confirmés.`,
+          type: "PaymentSuccess",
+          related_id: tx.tontine_id,
+        });
       }
     }
 

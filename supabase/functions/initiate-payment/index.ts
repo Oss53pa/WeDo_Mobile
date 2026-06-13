@@ -33,10 +33,12 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "Unauthorized" }, 401);
 
-    const { tontineId, amount, paymentMethod, mobileMoneyAccountId } =
+    const { tontineId, amount, paymentMethod, mobileMoneyAccountId, kind } =
       await req.json();
-    if (!tontineId || typeof amount !== "number" || amount <= 0) {
-      return json({ error: "Missing tontineId or invalid amount" }, 400);
+    const payKind = kind === "fee" ? "fee" : "contribution";
+    if (!tontineId) return json({ error: "Missing tontineId" }, 400);
+    if (payKind === "contribution" && (typeof amount !== "number" || amount <= 0)) {
+      return json({ error: "Invalid amount" }, 400);
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
@@ -44,10 +46,10 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    // 1) Caller must be an active member of the tontine
+    // 1) Caller must be a member of the tontine (fee/activation included)
     const { data: member } = await admin
       .from("tontine_members")
-      .select("id, status")
+      .select("id, status, frais_du, frais_paye")
       .eq("tontine_id", tontineId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -61,6 +63,57 @@ Deno.serve(async (req) => {
       .select("current_round, currency")
       .eq("id", tontineId)
       .single();
+    const feeCurrency = tontine?.currency ?? "XOF";
+
+    // ----- Activation-fee payment (paid once at launch, never trusts client amount) -----
+    if (payKind === "fee") {
+      if (member.frais_paye) {
+        return json({ error: "Frais d'activation déjà réglés." }, 409);
+      }
+      const feeAmount = Number(member.frais_du ?? 0);
+      if (feeAmount <= 0) return json({ error: "Aucun frais d'activation dû." }, 400);
+
+      const { data: feeTx, error: feeErr } = await admin
+        .from("transactions")
+        .insert({
+          user_id: user.id,
+          tontine_id: tontineId,
+          type: "Fee",
+          amount: feeAmount,
+          currency: feeCurrency,
+          status: "Pending",
+          description: "Frais d'activation",
+          reference_id: member.id,
+        })
+        .select("*")
+        .single();
+      if (feeErr) throw feeErr;
+
+      let feeUrl: string | undefined;
+      let feeToken: string | undefined;
+      if (MM_PROVIDER === "cinetpay") {
+        const r = await cinetpayInit(admin, user.id, feeTx.id, feeAmount, feeCurrency, "Frais d'activation");
+        if ("error" in r) return json({ error: r.error }, 502);
+        feeUrl = r.payment_url;
+        feeToken = r.payment_token;
+        await admin.from("transactions").update({ external_transaction_id: feeToken ?? null }).eq("id", feeTx.id);
+      }
+      return json({
+        kind: "fee",
+        transaction: mapTransaction(feeTx),
+        paymentUrl: feeUrl,
+        paymentToken: feeToken,
+        sandbox: MM_PROVIDER === "sandbox",
+      });
+    }
+
+    // Soft barrier: a member with an unpaid activation fee can't contribute yet.
+    if (Number(member.frais_du ?? 0) > 0 && !member.frais_paye) {
+      return json(
+        { error: "Réglez d'abord vos frais d'activation avant de cotiser.", need: "FEE" },
+        402,
+      );
+    }
     const round = tontine?.current_round && tontine.current_round > 0
       ? tontine.current_round
       : 1;
@@ -126,50 +179,10 @@ Deno.serve(async (req) => {
     let paymentUrl: string | undefined;
     let paymentToken: string | undefined;
     if (MM_PROVIDER === "cinetpay") {
-      // CinetPay v2 hosted checkout. The webhook (wedo-cinetpay-webhook) settles
-      // the contribution asynchronously; the app opens payment_url.
-      const apiKey = Deno.env.get("CINETPAY_API_KEY");
-      const siteId = Deno.env.get("CINETPAY_SITE_ID");
-      if (!apiKey || !siteId) {
-        return json({ error: "CinetPay non configuré (CINETPAY_API_KEY / CINETPAY_SITE_ID)" }, 500);
-      }
-
-      // Profile for the customer block (CinetPay requires name + phone for MM).
-      const { data: profile } = await admin
-        .from("profiles")
-        .select("full_name, phone_number")
-        .eq("id", user.id)
-        .maybeSingle();
-      const [firstName, ...rest] = (profile?.full_name ?? "Membre WeDo").split(" ");
-
-      const initRes = await fetch("https://api-checkout.cinetpay.com/v2/payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          apikey: apiKey,
-          site_id: siteId,
-          transaction_id: tx.id,
-          amount,
-          currency,
-          description: `Cotisation tour ${round}`,
-          notify_url: `${SUPABASE_URL}/functions/v1/wedo-cinetpay-webhook`,
-          return_url: "https://wedo.app/paiement/retour",
-          channels: "ALL",
-          customer_name: firstName,
-          customer_surname: rest.join(" ") || firstName,
-          customer_phone_number: profile?.phone_number ?? "",
-          metadata: contribution.id,
-        }),
-      });
-      const initData = await initRes.json().catch(() => ({}));
-      if (String(initData?.code) !== "201" || !initData?.data?.payment_url) {
-        return json(
-          { error: `CinetPay init échouée: ${initData?.message ?? initRes.status}` },
-          502,
-        );
-      }
-      paymentUrl = initData.data.payment_url;
-      paymentToken = initData.data.payment_token;
+      const r = await cinetpayInit(admin, user.id, tx.id, amount, currency, `Cotisation tour ${round}`);
+      if ("error" in r) return json({ error: r.error }, 502);
+      paymentUrl = r.payment_url;
+      paymentToken = r.payment_token;
       await admin
         .from("transactions")
         .update({ external_transaction_id: paymentToken ?? null })
@@ -187,6 +200,52 @@ Deno.serve(async (req) => {
     return json({ error: String((e as Error)?.message ?? e) }, 500);
   }
 });
+
+// CinetPay v2 hosted-checkout init. Returns {payment_url, payment_token} or {error}.
+async function cinetpayInit(
+  admin: any,
+  userId: string,
+  txId: string,
+  amount: number,
+  currency: string,
+  description: string,
+): Promise<{ payment_url: string; payment_token?: string } | { error: string }> {
+  const apiKey = Deno.env.get("CINETPAY_API_KEY");
+  const siteId = Deno.env.get("CINETPAY_SITE_ID");
+  if (!apiKey || !siteId) {
+    return { error: "CinetPay non configuré (CINETPAY_API_KEY / CINETPAY_SITE_ID)" };
+  }
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("full_name, phone_number")
+    .eq("id", userId)
+    .maybeSingle();
+  const [firstName, ...rest] = (profile?.full_name ?? "Membre WeDo").split(" ");
+  const res = await fetch("https://api-checkout.cinetpay.com/v2/payment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      apikey: apiKey,
+      site_id: siteId,
+      transaction_id: txId,
+      amount,
+      currency,
+      description,
+      notify_url: `${SUPABASE_URL}/functions/v1/wedo-cinetpay-webhook`,
+      return_url: "https://wedo.app/paiement/retour",
+      channels: "ALL",
+      customer_name: firstName,
+      customer_surname: rest.join(" ") || firstName,
+      customer_phone_number: profile?.phone_number ?? "",
+      metadata: txId,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (String(data?.code) !== "201" || !data?.data?.payment_url) {
+    return { error: `CinetPay init échouée: ${data?.message ?? res.status}` };
+  }
+  return { payment_url: data.data.payment_url, payment_token: data.data.payment_token };
+}
 
 function mapContribution(d: any) {
   return {

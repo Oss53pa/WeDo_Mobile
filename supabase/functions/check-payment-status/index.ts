@@ -89,6 +89,22 @@ Deno.serve(async (req) => {
       .select("*")
       .single();
 
+    // On success: activation fee → mark the member's frais_paye (no escrow, it's revenue).
+    if (newStatus === "Completed" && tx.type === "Fee" && tx.reference_id) {
+      await admin
+        .from("tontine_members")
+        .update({ frais_paye: true, frais_paye_at: new Date().toISOString() })
+        .eq("id", tx.reference_id)
+        .eq("frais_paye", false);
+      await admin.from("notifications").insert({
+        user_id: user.id,
+        title: "Frais d'activation réglés",
+        body: `Vos frais d'activation de ${tx.amount} ${tx.currency} sont confirmés. Vous pouvez cotiser.`,
+        type: "PaymentSuccess",
+        related_id: tx.tontine_id,
+      });
+    }
+
     // On success, settle the linked contribution THROUGH the séquestre.
     let escrow: unknown = undefined;
     if (newStatus === "Completed" && tx.type === "Contribution") {

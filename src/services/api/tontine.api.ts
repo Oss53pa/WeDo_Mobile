@@ -46,6 +46,8 @@ const mapTontine = (row: any): Tontine => ({
   depositAmount: row.deposit_amount,
   photoUrl: row.photo_url || undefined,
   inviteCode: row.invite_code || undefined,
+  tauxServiceBps: row.taux_service_bps ?? 80,
+  fraisTotal: row.frais_total ?? 0,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -497,18 +499,50 @@ export const removeMember = async (
   return {success: true};
 };
 
-/**
- * Start a tontine (admin only)
- */
-export const startTontine = async (tontineId: string): Promise<{success: boolean}> => {
-  if (!IS_SUPABASE_CONFIGURED) return DEMO_OK;
-  const {error} = await supabase
-    .from('tontines')
-    .update({status: 'Active', current_round: 1})
-    .eq('id', tontineId);
+export interface MyActivationFee {
+  fraisDu: number;
+  fraisPaye: boolean;
+}
 
+/** Read the current user's activation-fee status for a tontine. */
+export const getMyActivationFee = async (
+  tontineId: string,
+): Promise<MyActivationFee> => {
+  if (!IS_SUPABASE_CONFIGURED) return {fraisDu: 0, fraisPaye: true};
+  const {data: {user}} = await supabase.auth.getUser();
+  if (!user) return {fraisDu: 0, fraisPaye: true};
+  const {data} = await supabase
+    .from('tontine_members')
+    .select('frais_du, frais_paye')
+    .eq('tontine_id', tontineId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  return {
+    fraisDu: Number(data?.frais_du ?? 0),
+    fraisPaye: Boolean(data?.frais_paye ?? false),
+  };
+};
+
+export interface ActivationResult {
+  success: boolean;
+  already?: boolean;
+  error?: string;
+  n?: number;
+  mts?: number;
+  fraisTotal?: number;
+  fraisParMembreBase?: number;
+}
+
+/**
+ * Start (activate) a tontine cycle — admin only. Goes through the
+ * wedo.activer_cycle RPC, which computes the one-time activation fee
+ * (frais_du, equal for all members) and flips the status to Active.
+ */
+export const startTontine = async (tontineId: string): Promise<ActivationResult> => {
+  if (!IS_SUPABASE_CONFIGURED) return DEMO_OK;
+  const {data, error} = await supabase.rpc('activer_cycle', {p_tontine_id: tontineId});
   if (error) throw new Error(error.message);
-  return {success: true};
+  return data as ActivationResult;
 };
 
 /**
@@ -580,6 +614,7 @@ export const searchTontines = async (
 export default {
   getMyTontines,
   getConversations,
+  getMyActivationFee,
   getPublicTontines,
   getTontineDetail,
   createTontine,

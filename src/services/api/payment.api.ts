@@ -33,6 +33,20 @@ export const makeContribution = async (data: {
 };
 
 /**
+ * Pay the one-time activation fee for a tontine (via Edge Function). The amount
+ * is the member's frais_du on the server — never sent by the client.
+ */
+export const payActivationFee = async (
+  tontineId: string,
+): Promise<{transaction: Transaction; paymentUrl?: string}> => {
+  const {data, error} = await supabase.functions.invoke('initiate-payment', {
+    body: {tontineId, kind: 'fee'},
+  });
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+/**
  * Get contribution details
  */
 export const getContribution = async (contributionId: string): Promise<Contribution> => {
@@ -316,6 +330,7 @@ export const getPaymentStats = async (tontineId?: string) => {
 
 export default {
   makeContribution,
+  payActivationFee,
   getContribution,
   verifyPayment,
   processDistribution,

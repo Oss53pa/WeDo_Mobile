@@ -3,7 +3,7 @@
  * key stats, members and activity. Defensive about the data shape.
  */
 import React, {useEffect, useState} from 'react';
-import {View, Text, StyleSheet, ScrollView, RefreshControl} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, RefreshControl, Linking} from 'react-native';
 import {RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -25,13 +25,16 @@ import {
 import {PatternBackground} from '@components/patterns';
 import {TAB_BAR_SPACE} from '@components/navigation/CustomTabBar';
 import {ChevronLeftIcon, ShareIcon, CashIcon, CalendarIcon, UsersIcon, CheckIcon, ClockIcon, ChevronRightIcon} from '@components/icons';
-import {useTheme, useThemedStyles, typography, spacing, borderRadius, type ThemedTokens} from '@theme';
+import {useTheme, useThemedStyles, typography, spacing, borderRadius, tabularNums, type ThemedTokens} from '@theme';
 import {TontinesStackParamList, RootStackParamList} from '@navigation/types';
 import {useDispatch, useSelector} from 'react-redux';
 import {AppDispatch, RootState} from '@store/store';
 import {fetchTontineDetail} from '@store/slices/tontine.slice';
 import * as tontineApi from '@services/api/tontine.api';
+import paymentApi from '@services/api/payment.api';
+import {IS_SUPABASE_CONFIGURED} from '@config/appConfig';
 import {formatCurrency, formatDate, formatRelativeTime} from '@utils/formatting';
+import {formatFcfa} from '@utils/money';
 
 type DetailRoute = RouteProp<TontinesStackParamList, 'TontineDetail'>;
 type DetailNav = StackNavigationProp<TontinesStackParamList, 'TontineDetail'>;
@@ -53,6 +56,8 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [refreshing, setRefreshing] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [fee, setFee] = useState<tontineApi.MyActivationFee | null>(null);
+  const [payingFee, setPayingFee] = useState(false);
 
   const {currentTontine, isLoading} = useSelector((state: RootState) => state.tontine);
   const {user} = useSelector((state: RootState) => state.auth);
@@ -68,6 +73,37 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
       await dispatch(fetchTontineDetail(tontineId)).unwrap();
     } catch (e) {
       /* handled in slice */
+    }
+    try {
+      setFee(await tontineApi.getMyActivationFee(tontineId));
+    } catch {
+      /* non-blocking */
+    }
+  };
+
+  const handlePayFee = async () => {
+    setPayingFee(true);
+    try {
+      const {transaction, paymentUrl} = await paymentApi.payActivationFee(tontineId);
+      if (paymentUrl) {
+        await Linking.openURL(paymentUrl);
+        show('Terminez le paiement des frais dans la page qui vient de s’ouvrir.', {type: 'info'});
+      } else if (IS_SUPABASE_CONFIGURED) {
+        const {status} = await paymentApi.verifyPayment(transaction.id);
+        show(
+          status === 'Completed'
+            ? "Frais d'activation réglés. Vous pouvez cotiser."
+            : 'Paiement en attente de confirmation.',
+          {type: status === 'Completed' ? 'success' : 'info'},
+        );
+      } else {
+        show("Frais d'activation réglés (démo).", {type: 'success'});
+      }
+      await load();
+    } catch (e: any) {
+      show(e?.message ?? "Impossible de régler les frais.", {type: 'error'});
+    } finally {
+      setPayingFee(false);
     }
   };
   const onRefresh = async () => {
@@ -219,6 +255,28 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
                     </View>
                   </View>
                 )}
+              </View>
+            )}
+
+            {t.isMember && t.status === 'Active' && fee && !fee.fraisPaye && fee.fraisDu > 0 && (
+              <View style={s.feeBanner}>
+                <View style={s.feeBannerIcon}>
+                  <CashIcon size={20} color={colors.brand.gold} />
+                </View>
+                <View style={{flex: 1}}>
+                  <Text style={s.feeBannerTitle}>Frais d'activation à régler</Text>
+                  <Text style={s.feeBannerAmount}>{formatFcfa(BigInt(fee.fraisDu))}</Text>
+                  <Text style={s.feeBannerHint}>Payé une seule fois, au lancement. Requis avant de cotiser.</Text>
+                </View>
+                <Button
+                  title="Régler"
+                  variant="gradient"
+                  gradient="gold"
+                  size="small"
+                  loading={payingFee}
+                  disabled={payingFee}
+                  onPress={handlePayFee}
+                />
               </View>
             )}
 
@@ -461,6 +519,25 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     hint: {...typography.caption, color: colors.text.secondary},
     beneficiary: {flexDirection: 'row', alignItems: 'center'},
     benName: {...typography.bodyMedium, color: colors.text.primary, fontWeight: '700'},
+    feeBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      backgroundColor: colors.brand.goldSoft,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.brand.gold,
+      padding: spacing.md,
+      marginTop: spacing.lg,
+    },
+    feeBannerIcon: {
+      width: 40, height: 40, borderRadius: 12,
+      backgroundColor: colors.surface.default,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    feeBannerTitle: {...typography.captionMedium, color: colors.text.primary, fontWeight: '700'},
+    feeBannerAmount: {...typography.h3, color: colors.text.primary, fontWeight: '800', ...tabularNums},
+    feeBannerHint: {...typography.small, color: colors.text.secondary, marginTop: 2},
     actions: {marginTop: spacing.xl},
     memberRow: {
       flexDirection: 'row',

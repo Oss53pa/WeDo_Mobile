@@ -73,6 +73,10 @@ export interface Tontine {
   depositAmount: number;
   photoUrl?: string;
   inviteCode?: string;
+  /** Service rate in basis points (80 = 0,80 %) for the one-time activation fee. */
+  tauxServiceBps?: number;
+  /** Total activation fee frozen at cycle launch (FCFA). */
+  fraisTotal?: number;
   createdAt: string;
   updatedAt: string;
 }
