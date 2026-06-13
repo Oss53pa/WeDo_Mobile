@@ -13,38 +13,50 @@ export interface CountryInfo {
 }
 
 // West Africa (UEMOA / CEDEAO) + Central Africa (CEMAC), then a few common others.
-const COUNTRIES: Record<string, CountryInfo> = {
+// Ordered list (drives the country picker); COUNTRIES is the dial-code lookup.
+export const COUNTRY_LIST: CountryInfo[] = [
   // --- Afrique de l'Ouest ---
-  '225': {code: '225', name: "Côte d'Ivoire", flag: '🇨🇮', region: 'ouest'},
-  '221': {code: '221', name: 'Sénégal', flag: '🇸🇳', region: 'ouest'},
-  '223': {code: '223', name: 'Mali', flag: '🇲🇱', region: 'ouest'},
-  '226': {code: '226', name: 'Burkina Faso', flag: '🇧🇫', region: 'ouest'},
-  '228': {code: '228', name: 'Togo', flag: '🇹🇬', region: 'ouest'},
-  '229': {code: '229', name: 'Bénin', flag: '🇧🇯', region: 'ouest'},
-  '227': {code: '227', name: 'Niger', flag: '🇳🇪', region: 'ouest'},
-  '224': {code: '224', name: 'Guinée', flag: '🇬🇳', region: 'ouest'},
-  '245': {code: '245', name: 'Guinée-Bissau', flag: '🇬🇼', region: 'ouest'},
-  '220': {code: '220', name: 'Gambie', flag: '🇬🇲', region: 'ouest'},
-  '231': {code: '231', name: 'Liberia', flag: '🇱🇷', region: 'ouest'},
-  '232': {code: '232', name: 'Sierra Leone', flag: '🇸🇱', region: 'ouest'},
-  '233': {code: '233', name: 'Ghana', flag: '🇬🇭', region: 'ouest'},
-  '234': {code: '234', name: 'Nigeria', flag: '🇳🇬', region: 'ouest'},
-  '222': {code: '222', name: 'Mauritanie', flag: '🇲🇷', region: 'ouest'},
-  '238': {code: '238', name: 'Cap-Vert', flag: '🇨🇻', region: 'ouest'},
+  {code: '225', name: "Côte d'Ivoire", flag: '🇨🇮', region: 'ouest'},
+  {code: '221', name: 'Sénégal', flag: '🇸🇳', region: 'ouest'},
+  {code: '223', name: 'Mali', flag: '🇲🇱', region: 'ouest'},
+  {code: '226', name: 'Burkina Faso', flag: '🇧🇫', region: 'ouest'},
+  {code: '228', name: 'Togo', flag: '🇹🇬', region: 'ouest'},
+  {code: '229', name: 'Bénin', flag: '🇧🇯', region: 'ouest'},
+  {code: '227', name: 'Niger', flag: '🇳🇪', region: 'ouest'},
+  {code: '224', name: 'Guinée', flag: '🇬🇳', region: 'ouest'},
+  {code: '245', name: 'Guinée-Bissau', flag: '🇬🇼', region: 'ouest'},
+  {code: '220', name: 'Gambie', flag: '🇬🇲', region: 'ouest'},
+  {code: '231', name: 'Liberia', flag: '🇱🇷', region: 'ouest'},
+  {code: '232', name: 'Sierra Leone', flag: '🇸🇱', region: 'ouest'},
+  {code: '233', name: 'Ghana', flag: '🇬🇭', region: 'ouest'},
+  {code: '234', name: 'Nigeria', flag: '🇳🇬', region: 'ouest'},
+  {code: '222', name: 'Mauritanie', flag: '🇲🇷', region: 'ouest'},
+  {code: '238', name: 'Cap-Vert', flag: '🇨🇻', region: 'ouest'},
   // --- Afrique Centrale ---
-  '237': {code: '237', name: 'Cameroun', flag: '🇨🇲', region: 'centre'},
-  '241': {code: '241', name: 'Gabon', flag: '🇬🇦', region: 'centre'},
-  '242': {code: '242', name: 'Congo', flag: '🇨🇬', region: 'centre'},
-  '243': {code: '243', name: 'RD Congo', flag: '🇨🇩', region: 'centre'},
-  '236': {code: '236', name: 'Centrafrique', flag: '🇨🇫', region: 'centre'},
-  '235': {code: '235', name: 'Tchad', flag: '🇹🇩', region: 'centre'},
-  '240': {code: '240', name: 'Guinée équatoriale', flag: '🇬🇶', region: 'centre'},
-  '239': {code: '239', name: 'Sao Tomé-et-Principe', flag: '🇸🇹', region: 'centre'},
+  {code: '237', name: 'Cameroun', flag: '🇨🇲', region: 'centre'},
+  {code: '241', name: 'Gabon', flag: '🇬🇦', region: 'centre'},
+  {code: '242', name: 'Congo', flag: '🇨🇬', region: 'centre'},
+  {code: '243', name: 'RD Congo', flag: '🇨🇩', region: 'centre'},
+  {code: '236', name: 'Centrafrique', flag: '🇨🇫', region: 'centre'},
+  {code: '235', name: 'Tchad', flag: '🇹🇩', region: 'centre'},
+  {code: '240', name: 'Guinée équatoriale', flag: '🇬🇶', region: 'centre'},
+  {code: '239', name: 'Sao Tomé-et-Principe', flag: '🇸🇹', region: 'centre'},
   // --- Quelques autres courants ---
-  '33': {code: '33', name: 'France', flag: '🇫🇷', region: 'autre'},
-  '32': {code: '32', name: 'Belgique', flag: '🇧🇪', region: 'autre'},
-  '1': {code: '1', name: 'États-Unis / Canada', flag: '🇺🇸', region: 'autre'},
-};
+  {code: '33', name: 'France', flag: '🇫🇷', region: 'autre'},
+  {code: '32', name: 'Belgique', flag: '🇧🇪', region: 'autre'},
+  {code: '1', name: 'États-Unis / Canada', flag: '🇺🇸', region: 'autre'},
+];
+
+const COUNTRIES: Record<string, CountryInfo> = Object.fromEntries(
+  COUNTRY_LIST.map(c => [c.code, c]),
+);
+
+/** Default dial code when none is known yet (primary market: Côte d'Ivoire). */
+export const DEFAULT_COUNTRY_CODE = '225';
+
+/** Look up a country by its dial code (without "+"). */
+export const findCountryByCode = (code?: string | null): CountryInfo | null =>
+  (code && COUNTRIES[code]) || null;
 
 /** Detect the country from an international phone number (must start with "+"). */
 export const detectCountry = (phone?: string | null): CountryInfo | null => {

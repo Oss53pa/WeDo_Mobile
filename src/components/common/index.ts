@@ -56,6 +56,9 @@ export type {OTPInputProps} from './OTPInput';
 export {DatePickerField} from './DatePickerField';
 export type {DatePickerFieldProps} from './DatePickerField';
 
+export {CountryCodePicker} from './CountryCodePicker';
+export type {CountryCodePickerProps} from './CountryCodePicker';
+
 export {default as LoadingSpinner} from './LoadingSpinner';
 export type {LoadingSpinnerProps, LoadingSize} from './LoadingSpinner';
 

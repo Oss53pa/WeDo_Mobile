@@ -14,7 +14,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Animated, {FadeInDown} from 'react-native-reanimated';
 import {useDispatch} from 'react-redux';
-import {Button, Input, ProgressBar, PressableScale, SegmentedControl} from '@components/common';
+import {Button, Input, ProgressBar, PressableScale, SegmentedControl, CountryCodePicker} from '@components/common';
 import {GradientView} from '@components/common';
 import {PatternBackground} from '@components/patterns';
 import {ChevronLeftIcon} from '@components/icons';
@@ -22,7 +22,7 @@ import {useTheme, useThemedStyles, typography, spacing, borderRadius, fontFamily
 import {AuthStackScreenProps} from '@navigation/types';
 import {sendOtp} from '@store/slices/auth.slice';
 import {AppDispatch} from '@store/store';
-import {detectCountry} from '@utils/phoneCountry';
+import {findCountryByCode, DEFAULT_COUNTRY_CODE} from '@utils/phoneCountry';
 import {VALIDATION} from '@constants';
 import {AUTH_CONFIG} from '@config';
 
@@ -40,14 +40,55 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
   // optional, so a user without an e-mail can register with their phone only.
   const [method, setMethod] = useState<Method>('email');
   const [fullName, setFullName] = useState('');
+  const [dialCode, setDialCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [nameError, setNameError] = useState('');
   const [phoneError, setPhoneError] = useState('');
-
-  const regPhoneCountry = method === 'phone' ? detectCountry(phoneNumber) : null;
   const [emailError, setEmailError] = useState('');
+
+  const regPhoneCountry = findCountryByCode(dialCode);
+  const national = phoneNumber.replace(/\D/g, '');
+  const fullPhone = national ? `+${dialCode}${national}` : '';
+
+  const renderPhoneField = (label: string, helperText?: string) => (
+    <>
+      <Text style={s.methodLabel}>{label}</Text>
+      <View style={s.phoneRow}>
+        <CountryCodePicker value={dialCode} onChange={c => {
+          setDialCode(c);
+          setPhoneError('');
+        }} />
+        <View style={{flex: 1}}>
+          <Input
+            placeholder="07 12 34 56 78"
+            value={phoneNumber}
+            onChangeText={t => {
+              setPhoneNumber(t);
+              setPhoneError('');
+            }}
+            type="phone"
+            error={phoneError}
+            helperText={helperText}
+            maxLength={16}
+            testID="phone-input"
+          />
+        </View>
+      </View>
+      {regPhoneCountry && (
+        <View style={s.countryRow}>
+          <Text style={s.countryFlag}>{regPhoneCountry.flag}</Text>
+          <Text style={s.countryName}>{regPhoneCountry.name}</Text>
+          {regPhoneCountry.region !== 'autre' && (
+            <Text style={s.countryRegion}>
+              · Afrique {regPhoneCountry.region === 'ouest' ? 'de l’Ouest' : 'Centrale'}
+            </Text>
+          )}
+        </View>
+      )}
+    </>
+  );
 
   const validateName = (name: string) => {
     setNameError('');
@@ -56,16 +97,15 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
       return setNameError(`Au moins ${VALIDATION.NAME_MIN_LENGTH} caractères`), false;
     return true;
   };
-  const validatePhone = (phone: string, required: boolean) => {
+  const validatePhone = (required: boolean) => {
     setPhoneError('');
-    const v = phone.replace(/[^\d+]/g, '');
-    if (!v) {
+    if (!national) {
       if (required) return setPhoneError('Le numéro de téléphone est requis'), false;
       return true;
     }
-    // E.164: leading "+" then country code + number (8 to 15 digits).
-    if (!/^\+[1-9]\d{7,14}$/.test(v))
-      return setPhoneError('Format international requis, ex. +225 07 12 34 56 78'), false;
+    // E.164: dial code + national number (8 to 15 digits total).
+    if (!/^\+[1-9]\d{7,14}$/.test(fullPhone))
+      return setPhoneError('Numéro invalide pour ce pays. Vérifiez l’indicatif et le numéro.'), false;
     return true;
   };
   const validateEmail = (v: string, required: boolean) => {
@@ -82,18 +122,18 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
     const ok = [
       validateName(fullName),
       validateEmail(email, method === 'email'),
-      validatePhone(phoneNumber, method === 'phone'),
+      validatePhone(method === 'phone'),
     ].every(Boolean);
     if (!ok) return;
     setIsLoading(true);
     try {
       if (method === 'phone') {
         await dispatch(
-          sendOtp({channel: 'phone', phone: phoneNumber, fullName, email: email || undefined}),
+          sendOtp({channel: 'phone', phone: fullPhone, fullName, email: email || undefined}),
         ).unwrap();
-        navigation.navigate('VerifyOTP', {phone: phoneNumber});
+        navigation.navigate('VerifyOTP', {phone: fullPhone});
       } else {
-        await dispatch(sendOtp({email, fullName, phone: phoneNumber || undefined})).unwrap();
+        await dispatch(sendOtp({email, fullName, phone: fullPhone || undefined})).unwrap();
         navigation.navigate('VerifyOTP', {email});
       }
     } catch (error: any) {
@@ -158,34 +198,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
 
           {method === 'phone' ? (
             <>
-              <Input
-                label="Numéro de téléphone"
-                placeholder="+225 07 12 34 56 78"
-                value={phoneNumber}
-                onChangeText={t => {
-                  setPhoneNumber(t);
-                  setPhoneError('');
-                }}
-                type="phone"
-                leftIcon="phone"
-                error={phoneError}
-                helperText={`Un code de vérification vous sera envoyé ${
+              {renderPhoneField(
+                'Numéro de téléphone',
+                `Un code de vérification vous sera envoyé ${
                   AUTH_CONFIG.phoneOtpChannel === 'whatsapp' ? 'sur WhatsApp' : 'par SMS'
-                }. Indiquez l'indicatif pays (ex. +225).`}
-                maxLength={20}
-                required
-                testID="phone-input"
-              />
-              {regPhoneCountry && (
-                <View style={s.countryRow}>
-                  <Text style={s.countryFlag}>{regPhoneCountry.flag}</Text>
-                  <Text style={s.countryName}>{regPhoneCountry.name}</Text>
-                  {regPhoneCountry.region !== 'autre' && (
-                    <Text style={s.countryRegion}>
-                      · Afrique {regPhoneCountry.region === 'ouest' ? 'de l’Ouest' : 'Centrale'}
-                    </Text>
-                  )}
-                </View>
+                }.`,
               )}
               <Input
                 label="Adresse e-mail (optionnel)"
@@ -220,20 +237,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
                 required
                 testID="email-input"
               />
-              <Input
-                label="Numéro de téléphone (optionnel)"
-                placeholder="+225 07 12 34 56 78"
-                value={phoneNumber}
-                onChangeText={t => {
-                  setPhoneNumber(t);
-                  setPhoneError('');
-                }}
-                type="phone"
-                leftIcon="phone"
-                error={phoneError}
-                maxLength={20}
-                testID="phone-input"
-              />
+              {renderPhoneField('Numéro de téléphone (optionnel)')}
             </>
           )}
 
@@ -305,6 +309,7 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     progressRow: {marginBottom: spacing.lg},
     step: {...typography.caption, color: colors.text.secondary, marginTop: spacing.xs, textAlign: 'right'},
     methodLabel: {...typography.captionMedium, color: colors.text.secondary, marginBottom: spacing.xs, fontWeight: '600'},
+    phoneRow: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm},
     countryRow: {flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.xs, marginBottom: spacing.sm, paddingHorizontal: 2},
     countryFlag: {fontSize: 18},
     countryName: {...typography.bodyMedium, color: colors.text.primary, fontWeight: '700'},

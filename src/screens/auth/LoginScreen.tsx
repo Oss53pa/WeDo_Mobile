@@ -14,15 +14,15 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Animated, {FadeInDown} from 'react-native-reanimated';
 import {useDispatch} from 'react-redux';
-import {Button, Input, PressableScale, SegmentedControl} from '@components/common';
+import {Button, Input, PressableScale, SegmentedControl, CountryCodePicker} from '@components/common';
 import {GradientView} from '@components/common';
 import {PatternBackground} from '@components/patterns';
-import {ChevronLeftIcon, MailIcon, PhoneIcon} from '@components/icons';
+import {ChevronLeftIcon, MailIcon} from '@components/icons';
 import {useTheme, useThemedStyles, typography, spacing, borderRadius, fontFamily, type ThemedTokens} from '@theme';
 import {AuthStackScreenProps} from '@navigation/types';
 import {sendOtp} from '@store/slices/auth.slice';
 import {AppDispatch} from '@store/store';
-import {detectCountry} from '@utils/phoneCountry';
+import {findCountryByCode, DEFAULT_COUNTRY_CODE} from '@utils/phoneCountry';
 
 type LoginScreenProps = AuthStackScreenProps<'Login'>;
 
@@ -36,11 +36,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
 
   const [method, setMethod] = useState<Method>('email');
   const [email, setEmail] = useState('');
+  const [dialCode, setDialCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const phoneCountry = method === 'phone' ? detectCountry(phone) : null;
+  const phoneCountry = method === 'phone' ? findCountryByCode(dialCode) : null;
+  const fullPhone = `+${dialCode}${phone.replace(/\D/g, '')}`;
 
   const validateEmail = (value: string): boolean => {
     setError('');
@@ -50,24 +52,24 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
     return true;
   };
 
-  const validatePhone = (value: string): boolean => {
+  const validatePhone = (): boolean => {
     setError('');
-    const v = value.replace(/[^\d+]/g, '');
-    if (!v) return setError('Le numéro de téléphone est requis'), false;
-    // E.164: leading "+" then country code + number (8 to 15 digits).
-    if (!/^\+[1-9]\d{7,14}$/.test(v))
-      return setError("Entrez le numéro au format international, ex. +225 07 12 34 56 78"), false;
+    const national = phone.replace(/\D/g, '');
+    if (!national) return setError('Le numéro de téléphone est requis'), false;
+    // E.164: dial code + national number, 8 to 15 digits total.
+    if (!/^\+[1-9]\d{7,14}$/.test(fullPhone))
+      return setError('Numéro invalide pour ce pays. Vérifiez l’indicatif et le numéro.'), false;
     return true;
   };
 
   const handleLogin = async () => {
-    const ok = method === 'email' ? validateEmail(email) : validatePhone(phone);
+    const ok = method === 'email' ? validateEmail(email) : validatePhone();
     if (!ok) return;
     setIsLoading(true);
     try {
       if (method === 'phone') {
-        await dispatch(sendOtp({channel: 'phone', phone})).unwrap();
-        navigation.navigate('VerifyOTP', {phone});
+        await dispatch(sendOtp({channel: 'phone', phone: fullPhone})).unwrap();
+        navigation.navigate('VerifyOTP', {phone: fullPhone});
       } else {
         await dispatch(sendOtp({email})).unwrap();
         navigation.navigate('VerifyOTP', {email});
@@ -135,23 +137,29 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
             <>
               <Text style={s.label}>Entrez votre numéro</Text>
               <Text style={s.hint}>
-                Nous vous enverrons un code de vérification. Indiquez l'indicatif pays (ex. +225).
+                Choisissez votre pays, puis saisissez votre numéro local.
               </Text>
-              <Input
-                placeholder="+225 07 12 34 56 78"
-                value={phone}
-                onChangeText={t => {
-                  setPhone(t);
+              <View style={s.phoneRow}>
+                <CountryCodePicker value={dialCode} onChange={c => {
+                  setDialCode(c);
                   setError('');
-                }}
-                type="phone"
-                leftNode={<PhoneIcon size={20} color={colors.text.tertiary} />}
-                error={error}
-                maxLength={20}
-                autoFocus
-                containerStyle={{marginTop: spacing.md}}
-                testID="phone-input"
-              />
+                }} />
+                <View style={{flex: 1}}>
+                  <Input
+                    placeholder="07 12 34 56 78"
+                    value={phone}
+                    onChangeText={t => {
+                      setPhone(t);
+                      setError('');
+                    }}
+                    type="phone"
+                    error={error}
+                    maxLength={16}
+                    autoFocus
+                    testID="phone-input"
+                  />
+                </View>
+              </View>
               {phoneCountry && (
                 <View style={s.countryRow}>
                   <Text style={s.countryFlag}>{phoneCountry.flag}</Text>
@@ -225,6 +233,7 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     },
     label: {...typography.h3, color: colors.text.primary, fontWeight: '700'},
     hint: {...typography.caption, color: colors.text.secondary, marginTop: 4},
+    phoneRow: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginTop: spacing.md},
     countryRow: {flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm, paddingHorizontal: 2},
     countryFlag: {fontSize: 18},
     countryName: {...typography.bodyMedium, color: colors.text.primary, fontWeight: '700'},
