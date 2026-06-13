@@ -3,7 +3,7 @@
  * Premium themed UI; validation + submit logic preserved.
  */
 import React, {useState, useEffect} from 'react';
-import {View, Text, StyleSheet, ScrollView, Alert} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, Alert, Linking} from 'react-native';
 import {RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -92,7 +92,7 @@ const ContributionScreen: React.FC<Props> = ({route, navigation}) => {
       }
 
       // 1) Create the pending contribution + transaction (Edge Function).
-      const {transaction} = await paymentApi.makeContribution({
+      const {transaction, paymentUrl} = await paymentApi.makeContribution({
         tontineId: currentTontine.id,
         amount: parseFloat(amount),
         paymentMethod,
@@ -100,7 +100,19 @@ const ContributionScreen: React.FC<Props> = ({route, navigation}) => {
           paymentMethod === 'MobileMoney' ? selectedAccountId : undefined,
       });
 
-      // 2) Mobile Money settles immediately (sandbox PSP → escrow + ledger + score).
+      // Real PSP (CinetPay): open the hosted checkout. The webhook settles the
+      // contribution into the séquestre once the operator confirms.
+      if (paymentMethod === 'MobileMoney' && paymentUrl) {
+        await Linking.openURL(paymentUrl);
+        Alert.alert(
+          'Finalisez le paiement',
+          'Terminez le paiement dans la page Mobile Money qui vient de s’ouvrir. Votre cotisation sera sécurisée au séquestre dès confirmation.',
+          [{text: 'OK', onPress: () => navigation.goBack()}],
+        );
+        return;
+      }
+
+      // 2) Sandbox Mobile Money settles immediately (escrow + ledger + score).
       //    Cash / bank transfer stay Pending until the treasurer confirms receipt.
       if (paymentMethod === 'MobileMoney') {
         const {status} = await paymentApi.verifyPayment(transaction.id);

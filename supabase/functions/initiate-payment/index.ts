@@ -124,17 +124,63 @@ Deno.serve(async (req) => {
 
     // 5) ----- Mobile Money provider hand-off -----
     let paymentUrl: string | undefined;
-    if (MM_PROVIDER !== "sandbox") {
-      // TODO: call the PSP here (CinetPay/Flutterwave/Orange Money/Wave) using
-      // mobileMoneyAccountId + amount + tx.id as the merchant reference, and
-      // return its hosted-checkout URL or trigger the USSD push.
-      // paymentUrl = await initWithProvider({ provider: MM_PROVIDER, amount, currency, ref: tx.id, accountId: mobileMoneyAccountId });
+    let paymentToken: string | undefined;
+    if (MM_PROVIDER === "cinetpay") {
+      // CinetPay v2 hosted checkout. The webhook (wedo-cinetpay-webhook) settles
+      // the contribution asynchronously; the app opens payment_url.
+      const apiKey = Deno.env.get("CINETPAY_API_KEY");
+      const siteId = Deno.env.get("CINETPAY_SITE_ID");
+      if (!apiKey || !siteId) {
+        return json({ error: "CinetPay non configuré (CINETPAY_API_KEY / CINETPAY_SITE_ID)" }, 500);
+      }
+
+      // Profile for the customer block (CinetPay requires name + phone for MM).
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("full_name, phone_number")
+        .eq("id", user.id)
+        .maybeSingle();
+      const [firstName, ...rest] = (profile?.full_name ?? "Membre WeDo").split(" ");
+
+      const initRes = await fetch("https://api-checkout.cinetpay.com/v2/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apikey: apiKey,
+          site_id: siteId,
+          transaction_id: tx.id,
+          amount,
+          currency,
+          description: `Cotisation tour ${round}`,
+          notify_url: `${SUPABASE_URL}/functions/v1/wedo-cinetpay-webhook`,
+          return_url: "https://wedo.app/paiement/retour",
+          channels: "ALL",
+          customer_name: firstName,
+          customer_surname: rest.join(" ") || firstName,
+          customer_phone_number: profile?.phone_number ?? "",
+          metadata: contribution.id,
+        }),
+      });
+      const initData = await initRes.json().catch(() => ({}));
+      if (String(initData?.code) !== "201" || !initData?.data?.payment_url) {
+        return json(
+          { error: `CinetPay init échouée: ${initData?.message ?? initRes.status}` },
+          502,
+        );
+      }
+      paymentUrl = initData.data.payment_url;
+      paymentToken = initData.data.payment_token;
+      await admin
+        .from("transactions")
+        .update({ external_transaction_id: paymentToken ?? null })
+        .eq("id", tx.id);
     }
 
     return json({
       contribution: mapContribution(contribution),
       transaction: mapTransaction(tx),
       paymentUrl,
+      paymentToken,
       sandbox: MM_PROVIDER === "sandbox",
     });
   } catch (e) {

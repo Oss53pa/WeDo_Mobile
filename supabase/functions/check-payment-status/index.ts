@@ -61,10 +61,25 @@ Deno.serve(async (req) => {
     if (MM_PROVIDER === "sandbox") {
       newStatus = "Completed";
       externalRef = `SBX-${tx.id.slice(0, 8)}`;
-    } else {
-      // TODO: call the PSP status endpoint with tx.external_transaction_id and
-      // map their result to Completed / Failed / Pending.
-      newStatus = "Pending";
+    } else if (MM_PROVIDER === "cinetpay") {
+      const apiKey = Deno.env.get("CINETPAY_API_KEY");
+      const siteId = Deno.env.get("CINETPAY_SITE_ID");
+      const checkRes = await fetch(
+        "https://api-checkout.cinetpay.com/v2/payment/check",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ apikey: apiKey, site_id: siteId, transaction_id: tx.id }),
+        },
+      );
+      const checkData = await checkRes.json().catch(() => ({}));
+      const s = checkData?.data?.status;
+      if (s === "ACCEPTED") newStatus = "Completed";
+      else if (s === "REFUSED" || s === "EXPIRED") newStatus = "Failed";
+      else newStatus = "Pending";
+      externalRef = checkData?.data?.payment_method
+        ? `CP-${checkData.data.payment_method}`
+        : externalRef;
     }
 
     const { data: updatedTx } = await admin
