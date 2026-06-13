@@ -22,9 +22,11 @@ import {gradientSchemes, type AppGradients} from './gradients';
 import {
   AMBIANCES,
   applyAmbiance,
+  resolveAmbianceCopy,
   type AmbianceKey,
   type AdinkraKey,
 } from './ambiances';
+import type {AfricaRegion} from '../utils/phoneCountry';
 import {typography} from './typography';
 import {
   spacing,
@@ -40,6 +42,7 @@ export type SchemePreference = ColorScheme | 'system';
 
 const STORAGE_KEY = '@wedo/color-scheme';
 const AMBIANCE_KEY = '@wedo/ambiance';
+const REGION_KEY = '@wedo/region';
 
 export interface ThemedTokens {
   scheme: ColorScheme;
@@ -51,6 +54,10 @@ export interface ThemedTokens {
   adinkra: AdinkraKey;
   greeting: string;
   balanceLabel: string;
+  /** Word for "tontine" in the active ambiance/region (le do / njangi / tontine). */
+  tontineWord: string;
+  /** User's African region, derived from their phone indicatif. */
+  region: AfricaRegion;
   typography: typeof typography;
   spacing: typeof spacing;
   borderRadius: typeof borderRadius;
@@ -66,15 +73,21 @@ export interface ThemeContextValue extends ThemedTokens {
   setScheme: (pref: SchemePreference) => void;
   toggleScheme: () => void;
   setAmbiance: (key: AmbianceKey) => void;
+  setRegion: (region: AfricaRegion) => void;
 }
 
-const buildTokens = (scheme: ColorScheme, ambiance: AmbianceKey): ThemedTokens => {
+const buildTokens = (
+  scheme: ColorScheme,
+  ambiance: AmbianceKey,
+  region: AfricaRegion,
+): ThemedTokens => {
   const {colors, gradients} = applyAmbiance(
     schemes[scheme],
     gradientSchemes[scheme],
     ambiance,
   );
   const def = AMBIANCES[ambiance] ?? AMBIANCES.standard;
+  const copy = resolveAmbianceCopy(ambiance, region);
   return {
     scheme,
     isDark: scheme === 'dark',
@@ -82,8 +95,10 @@ const buildTokens = (scheme: ColorScheme, ambiance: AmbianceKey): ThemedTokens =
     gradients,
     ambiance,
     adinkra: def.adinkra,
-    greeting: def.greeting,
-    balanceLabel: def.balanceLabel,
+    greeting: copy.greeting,
+    balanceLabel: copy.balanceLabel,
+    tontineWord: copy.tontineWord,
+    region,
     typography,
     spacing,
     borderRadius,
@@ -96,11 +111,12 @@ const buildTokens = (scheme: ColorScheme, ambiance: AmbianceKey): ThemedTokens =
 };
 
 const ThemeContext = createContext<ThemeContextValue>({
-  ...buildTokens('light', 'standard'),
+  ...buildTokens('light', 'standard', 'autre'),
   preference: 'system',
   setScheme: () => {},
   toggleScheme: () => {},
   setAmbiance: () => {},
+  setRegion: () => {},
 });
 
 export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
@@ -108,6 +124,7 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
 }) => {
   const [preference, setPreference] = useState<SchemePreference>('system');
   const [ambiance, setAmbianceState] = useState<AmbianceKey>('standard');
+  const [region, setRegionState] = useState<AfricaRegion>('autre');
   const [systemScheme, setSystemScheme] = useState<ColorScheme>(
     Appearance.getColorScheme() === 'dark' ? 'dark' : 'light',
   );
@@ -117,15 +134,19 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
   useEffect(() => {
     (async () => {
       try {
-        const [savedScheme, savedAmbiance] = await Promise.all([
+        const [savedScheme, savedAmbiance, savedRegion] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY),
           AsyncStorage.getItem(AMBIANCE_KEY),
+          AsyncStorage.getItem(REGION_KEY),
         ]);
         if (savedScheme === 'light' || savedScheme === 'dark' || savedScheme === 'system') {
           setPreference(savedScheme);
         }
         if (savedAmbiance && savedAmbiance in AMBIANCES) {
           setAmbianceState(savedAmbiance as AmbianceKey);
+        }
+        if (savedRegion === 'ouest' || savedRegion === 'centre' || savedRegion === 'autre') {
+          setRegionState(savedRegion);
         }
       } catch {
         // ignore — fall back to defaults
@@ -162,15 +183,24 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
     AsyncStorage.setItem(AMBIANCE_KEY, key).catch(() => {});
   }, []);
 
+  const setRegion = useCallback((next: AfricaRegion) => {
+    setRegionState(prev => {
+      if (prev === next) return prev;
+      AsyncStorage.setItem(REGION_KEY, next).catch(() => {});
+      return next;
+    });
+  }, []);
+
   const value = useMemo<ThemeContextValue>(
     () => ({
-      ...buildTokens(scheme, ambiance),
+      ...buildTokens(scheme, ambiance, region),
       preference,
       setScheme,
       toggleScheme,
       setAmbiance,
+      setRegion,
     }),
-    [scheme, ambiance, preference, setScheme, toggleScheme, setAmbiance],
+    [scheme, ambiance, region, preference, setScheme, toggleScheme, setAmbiance, setRegion],
   );
 
   return (
