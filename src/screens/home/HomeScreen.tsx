@@ -100,7 +100,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
 
   const u: any = user;
   const stats = profile?.statistics;
-  const balance = stats?.totalContributed ?? u?.totalContributed ?? 450000;
+  const balance = stats?.totalContributed ?? u?.totalContributed ?? 0;
   const statActive = stats?.activeTontines ?? u?.activeTontines ?? 0;
   const statCompleted = stats?.tontinesCompleted ?? u?.completedTontines ?? 0;
   const statPunctuality = stats?.onTimePaymentRate ?? u?.punctualityRate ?? 0;
