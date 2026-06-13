@@ -25,7 +25,8 @@ import {
   SegmentedControl,
   type SegmentOption,
 } from '@components/common';
-import {ChevronRightIcon, AlertIcon} from '@components/icons';
+import {ChevronRightIcon, AlertIcon, CheckIcon} from '@components/icons';
+import {Adinkra} from '@components/patterns';
 import {
   useTheme,
   useThemedStyles,
@@ -33,6 +34,7 @@ import {
   spacing,
   borderRadius,
   iconSize,
+  AMBIANCE_LIST,
   type ThemedTokens,
 } from '@theme';
 import {TAB_BAR_SPACE} from '@components/navigation/CustomTabBar';
@@ -53,7 +55,7 @@ type Currency = 'XOF' | 'XAF' | 'USD' | 'EUR';
 
 const SettingsScreen: React.FC<Props> = ({navigation}) => {
   const dispatch = useDispatch<AppDispatch>();
-  const {colors, preference, setScheme} = useTheme();
+  const {colors, preference, setScheme, ambiance, setAmbiance} = useTheme();
   const s = useThemedStyles(makeStyles);
   const {biometricEnabled} = useSelector((state: RootState) => state.auth);
   const {profile} = useSelector((state: RootState) => state.user);
@@ -259,6 +261,43 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
           onChange={setScheme}
           style={s.themeControl}
         />
+      </Card>
+
+      {/* Ambiance Section */}
+      <Card style={s.card} padding={spacing.md}>
+        <Text style={s.sectionTitle}>Ambiance</Text>
+        <Text style={s.sectionHint}>
+          Une identité Kente, plusieurs personnalités. Choisissez la vôtre.
+        </Text>
+        <View style={s.ambGrid}>
+          {AMBIANCE_LIST.map(a => {
+            const active = a.key === ambiance;
+            return (
+              <PressableScale
+                key={a.key}
+                onPress={() => setAmbiance(a.key)}
+                style={[
+                  s.ambCard,
+                  {borderColor: active ? a.swatch[1] : colors.border.default},
+                  active && {borderWidth: 2},
+                ]}>
+                <View style={s.ambTop}>
+                  <View style={s.ambSwatch}>
+                    {a.swatch.slice(0, 4).map((c, i) => (
+                      <View key={i} style={[s.ambDot, {backgroundColor: c}]} />
+                    ))}
+                  </View>
+                  <Adinkra name={a.adinkra} size={26} color={a.swatch[1]} weight={7} />
+                </View>
+                <View style={s.ambNameRow}>
+                  <Text style={s.ambName}>{a.label}</Text>
+                  {active && <CheckIcon size={16} color={a.swatch[1]} />}
+                </View>
+                <Text style={s.ambTagline} numberOfLines={1}>{a.tagline}</Text>
+              </PressableScale>
+            );
+          })}
+        </View>
       </Card>
 
       {/* Account Section */}
@@ -538,6 +577,31 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     themeControl: {
       marginTop: spacing.xs,
     },
+    ambGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    ambCard: {
+      width: '47%',
+      flexGrow: 1,
+      borderWidth: 1,
+      borderRadius: borderRadius.lg,
+      padding: spacing.sm + 2,
+      backgroundColor: colors.surface.default,
+    },
+    ambTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    ambSwatch: {flexDirection: 'row', gap: 3},
+    ambDot: {width: 12, height: 12, borderRadius: 4},
+    ambNameRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+    ambName: {...typography.bodyMedium, color: colors.text.primary, fontWeight: '800'},
+    ambTagline: {...typography.small, color: colors.text.tertiary, marginTop: 2},
     settingItem: {
       flexDirection: 'row',
       alignItems: 'center',

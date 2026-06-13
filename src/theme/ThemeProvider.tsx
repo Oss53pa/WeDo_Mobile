@@ -19,6 +19,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {schemes, type AppColors, type ColorScheme} from './colors';
 import {gradientSchemes, type AppGradients} from './gradients';
+import {
+  AMBIANCES,
+  applyAmbiance,
+  type AmbianceKey,
+  type AdinkraKey,
+} from './ambiances';
 import {typography} from './typography';
 import {
   spacing,
@@ -33,12 +39,18 @@ import {motion} from './motion';
 export type SchemePreference = ColorScheme | 'system';
 
 const STORAGE_KEY = '@wedo/color-scheme';
+const AMBIANCE_KEY = '@wedo/ambiance';
 
 export interface ThemedTokens {
   scheme: ColorScheme;
   isDark: boolean;
   colors: AppColors;
   gradients: AppGradients;
+  /** Selected ambiance (mood) + its signature adinkra & greeting. */
+  ambiance: AmbianceKey;
+  adinkra: AdinkraKey;
+  greeting: string;
+  balanceLabel: string;
   typography: typeof typography;
   spacing: typeof spacing;
   borderRadius: typeof borderRadius;
@@ -53,49 +65,70 @@ export interface ThemeContextValue extends ThemedTokens {
   preference: SchemePreference;
   setScheme: (pref: SchemePreference) => void;
   toggleScheme: () => void;
+  setAmbiance: (key: AmbianceKey) => void;
 }
 
-const buildTokens = (scheme: ColorScheme): ThemedTokens => ({
-  scheme,
-  isDark: scheme === 'dark',
-  colors: schemes[scheme],
-  gradients: gradientSchemes[scheme],
-  typography,
-  spacing,
-  borderRadius,
-  iconSize,
-  avatarSize,
-  touchTarget,
-  shadows,
-  motion,
-});
+const buildTokens = (scheme: ColorScheme, ambiance: AmbianceKey): ThemedTokens => {
+  const {colors, gradients} = applyAmbiance(
+    schemes[scheme],
+    gradientSchemes[scheme],
+    ambiance,
+  );
+  const def = AMBIANCES[ambiance] ?? AMBIANCES.standard;
+  return {
+    scheme,
+    isDark: scheme === 'dark',
+    colors,
+    gradients,
+    ambiance,
+    adinkra: def.adinkra,
+    greeting: def.greeting,
+    balanceLabel: def.balanceLabel,
+    typography,
+    spacing,
+    borderRadius,
+    iconSize,
+    avatarSize,
+    touchTarget,
+    shadows,
+    motion,
+  };
+};
 
 const ThemeContext = createContext<ThemeContextValue>({
-  ...buildTokens('light'),
+  ...buildTokens('light', 'standard'),
   preference: 'system',
   setScheme: () => {},
   toggleScheme: () => {},
+  setAmbiance: () => {},
 });
 
 export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
   children,
 }) => {
   const [preference, setPreference] = useState<SchemePreference>('system');
+  const [ambiance, setAmbianceState] = useState<AmbianceKey>('standard');
   const [systemScheme, setSystemScheme] = useState<ColorScheme>(
     Appearance.getColorScheme() === 'dark' ? 'dark' : 'light',
   );
   const hydrated = useRef(false);
 
-  // Load saved preference once
+  // Load saved preferences once
   useEffect(() => {
     (async () => {
       try {
-        const saved = await AsyncStorage.getItem(STORAGE_KEY);
-        if (saved === 'light' || saved === 'dark' || saved === 'system') {
-          setPreference(saved);
+        const [savedScheme, savedAmbiance] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY),
+          AsyncStorage.getItem(AMBIANCE_KEY),
+        ]);
+        if (savedScheme === 'light' || savedScheme === 'dark' || savedScheme === 'system') {
+          setPreference(savedScheme);
+        }
+        if (savedAmbiance && savedAmbiance in AMBIANCES) {
+          setAmbianceState(savedAmbiance as AmbianceKey);
         }
       } catch {
-        // ignore — fall back to system
+        // ignore — fall back to defaults
       } finally {
         hydrated.current = true;
       }
@@ -124,14 +157,20 @@ export const ThemeProvider: React.FC<{children: React.ReactNode}> = ({
     setScheme(scheme === 'dark' ? 'light' : 'dark');
   }, [scheme, setScheme]);
 
+  const setAmbiance = useCallback((key: AmbianceKey) => {
+    setAmbianceState(key);
+    AsyncStorage.setItem(AMBIANCE_KEY, key).catch(() => {});
+  }, []);
+
   const value = useMemo<ThemeContextValue>(
     () => ({
-      ...buildTokens(scheme),
+      ...buildTokens(scheme, ambiance),
       preference,
       setScheme,
       toggleScheme,
+      setAmbiance,
     }),
-    [scheme, preference, setScheme, toggleScheme],
+    [scheme, ambiance, preference, setScheme, toggleScheme, setAmbiance],
   );
 
   return (
@@ -153,7 +192,7 @@ export function useThemedStyles<T extends Record<string, unknown>>(
   return useMemo(
     () => makeStyles(tokens),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tokens.scheme],
+    [tokens.scheme, tokens.ambiance],
   );
 }
 

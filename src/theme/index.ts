@@ -84,6 +84,9 @@ export {
 export type {AppColors, ColorScheme} from './colors';
 export type {AppGradients, GradientName} from './gradients';
 
+export {AMBIANCES, AMBIANCE_LIST, applyAmbiance} from './ambiances';
+export type {AmbianceKey, AmbianceDef, AdinkraKey} from './ambiances';
+
 export {ThemeProvider, useTheme, useThemedStyles} from './ThemeProvider';
 export type {ThemeContextValue, ThemedTokens} from './ThemeProvider';
 

@@ -61,7 +61,7 @@ type HomeScreenProps = MainTabScreenProps<'Home'>;
 
 const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
   const dispatch = useDispatch<AppDispatch>();
-  const {colors, gradients} = useTheme();
+  const {colors, gradients, ambiance, greeting: ambianceGreeting, balanceLabel} = useTheme();
   const s = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
 
@@ -74,11 +74,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
   const isLoading = useSelector((state: RootState) => state.user.isLoading);
 
   useEffect(() => {
+    // Ambiances carry their own signature greeting (Akwaba / Yo / Bonsoir);
+    // the Standard ambiance keeps the time-based one.
+    if (ambiance !== 'standard') {
+      setGreeting(ambianceGreeting);
+      return;
+    }
     const hour = new Date().getHours();
     if (hour < 12) setGreeting('Bonjour');
     else if (hour < 18) setGreeting('Bon après-midi');
     else setGreeting('Bonsoir');
-  }, []);
+  }, [ambiance, ambianceGreeting]);
 
   useEffect(() => {
     if (user?.id) loadData();
@@ -143,7 +149,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
       <Animated.View entering={FadeInDown.delay(80).duration(420)} style={s.heroWrap}>
         <GradientCard gradient="sunset" motif="diamonds" motifOpacity={0.12}>
           <View style={s.balanceTop}>
-            <Text style={s.balanceLabel}>Solde total épargne</Text>
+            <Text style={s.balanceLabel}>{balanceLabel}</Text>
             <PressableScale style={s.eyeBtn} onPress={() => setShowBalance(v => !v)}>
               {showBalance ? (
                 <EyeIcon size={18} color="#FFFFFF" />

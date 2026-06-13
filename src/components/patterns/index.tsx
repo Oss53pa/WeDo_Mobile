@@ -218,4 +218,7 @@ export const KenteEmblem: React.FC<EmblemProps> = ({
   );
 };
 
+export {Adinkra} from './Adinkra';
+export type {AdinkraProps} from './Adinkra';
+
 export default PatternBackground;
