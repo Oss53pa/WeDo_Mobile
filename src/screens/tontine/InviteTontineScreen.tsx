@@ -59,9 +59,10 @@ const InviteTontineScreen: React.FC<{navigation: Nav; route: Route}> = ({
 
   const code = inviteCode || '· · · ·';
   const shareMessage =
-    `Rejoins ma tontine « ${tontineName} » sur WeDo !\n` +
-    `Code d'invitation : ${inviteCode}\n` +
-    `Dans l'app : Tontines → « J'ai un code d'invitation ».`;
+    `Rejoins ma tontine « ${tontineName} » sur WeDo ! 🤝\n\n` +
+    `📲 Installe l'app : https://wedo.atlas-studio.org\n` +
+    `🔑 Code d'invitation : ${inviteCode}\n\n` +
+    `Ouvre WeDo → « J'ai un code d'invitation » et entre le code.`;
 
   const shareLink = async (channel?: string) => {
     if (!inviteCode) {
