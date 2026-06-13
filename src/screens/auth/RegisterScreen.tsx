@@ -257,8 +257,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
 
           <Text style={s.terms}>
             En continuant, vous acceptez nos{' '}
-            <Text style={s.termsLink}>Conditions</Text> et notre{' '}
-            <Text style={s.termsLink}>Politique de confidentialité</Text>.
+            <Text style={s.termsLink} onPress={() => navigation.navigate('Legal', {doc: 'cgu'})}>Conditions</Text> et notre{' '}
+            <Text style={s.termsLink} onPress={() => navigation.navigate('Legal', {doc: 'privacy'})}>Politique de confidentialité</Text>.
           </Text>
         </Animated.View>
 

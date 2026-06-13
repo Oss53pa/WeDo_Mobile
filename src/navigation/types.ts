@@ -27,6 +27,7 @@ export type RootStackParamList = {
   HowItWorks: undefined;
   Feedback: undefined;
   Kyc: undefined;
+  Legal: {doc: 'cgu' | 'privacy'};
   // Trust layer (MVP)
   Registre: {tontineId: string};
   OrganizerDashboard: {tontineId: string};
@@ -42,6 +43,7 @@ export type AuthStackParamList = {
   CreatePIN: {email: string; fullName: string};
   SetupBiometric: undefined;
   LinkMobileMoney: undefined;
+  Legal: {doc: 'cgu' | 'privacy'};
 };
 
 // Main Tab Navigator

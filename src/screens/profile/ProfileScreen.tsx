@@ -265,6 +265,8 @@ const ProfileScreen: React.FC<Props> = ({navigation}) => {
           <SettingRow icon={<Icon name="palette-outline" size={20} color={colors.brand.gold} />} bg={colors.brand.goldSoft} label="Apparence & ambiance" onPress={() => navigation.navigate('Settings')} />
           <SettingRow icon={<LockIcon size={20} color={colors.brand.indigo} />} bg={colors.brand.indigoSoft} label="Sécurité & confidentialité" onPress={() => navigation.navigate('Settings')} />
           <SettingRow icon={<Icon name="information-outline" size={20} color={colors.brand.emerald} />} bg={colors.brand.emeraldSoft} label={copy.help} onPress={() => (navigation as any).navigate('HowItWorks')} />
+          <SettingRow icon={<Icon name="file-document-outline" size={20} color={colors.brand.indigo} />} bg={colors.brand.indigoSoft} label="Conditions d'utilisation" onPress={() => (navigation as any).navigate('Legal', {doc: 'cgu'})} />
+          <SettingRow icon={<Icon name="shield-lock-outline" size={20} color={colors.brand.emerald} />} bg={colors.brand.emeraldSoft} label="Politique de confidentialité" onPress={() => (navigation as any).navigate('Legal', {doc: 'privacy'})} />
           <SettingRow icon={<Icon name="message-star-outline" size={20} color={colors.brand.terracotta} />} bg={colors.brand.terracottaSoft} label="Votre avis compte" onPress={() => (navigation as any).navigate('Feedback')} />
           <SettingRow icon={<HelpIcon size={20} color={colors.brand.gold} />} bg={colors.brand.goldSoft} label="Aide & support" onPress={() => (navigation as any).navigate('Feedback')} />
         </View>

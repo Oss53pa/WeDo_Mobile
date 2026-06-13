@@ -12,6 +12,7 @@ import ManageTontineScreen from '@screens/tontine/ManageTontineScreen';
 import InviteTontineScreen from '@screens/tontine/InviteTontineScreen';
 import JoinByCodeScreen from '@screens/tontine/JoinByCodeScreen';
 import HowItWorksScreen from '@screens/info/HowItWorksScreen';
+import LegalScreen from '@screens/legal/LegalScreen';
 import FeedbackScreen from '@screens/feedback/FeedbackScreen';
 import MemberProfileScreen from '@screens/profile/MemberProfileScreen';
 import KycScreen from '@screens/profile/KycScreen';
@@ -39,6 +40,7 @@ const RootNavigator: React.FC<RootNavigatorProps> = ({isAuthenticated}) => {
           <Stack.Screen name="InviteTontine" component={InviteTontineScreen} />
           <Stack.Screen name="JoinByCode" component={JoinByCodeScreen} />
           <Stack.Screen name="HowItWorks" component={HowItWorksScreen} />
+          <Stack.Screen name="Legal" component={LegalScreen} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} />
           <Stack.Screen name="MemberProfile" component={MemberProfileScreen} />
           <Stack.Screen name="Kyc" component={KycScreen} />

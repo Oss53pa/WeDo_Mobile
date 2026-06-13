@@ -13,6 +13,7 @@ import WelcomeScreen from '@screens/auth/WelcomeScreen';
 import LoginScreen from '@screens/auth/LoginScreen';
 import RegisterScreen from '@screens/auth/RegisterScreen';
 import VerifyOTPScreen from '@screens/auth/VerifyOTPScreen';
+import LegalScreen from '@screens/legal/LegalScreen';
 // import CreatePINScreen from '@screens/auth/CreatePINScreen';
 // import SetupBiometricScreen from '@screens/auth/SetupBiometricScreen';
 // import LinkMobileMoneyScreen from '@screens/auth/LinkMobileMoneyScreen';
@@ -32,6 +33,7 @@ const AuthNavigator: React.FC = () => {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
+      <Stack.Screen name="Legal" component={LegalScreen} />
       {/* <Stack.Screen name="CreatePIN" component={CreatePINScreen} />
       <Stack.Screen name="SetupBiometric" component={SetupBiometricScreen} />
       <Stack.Screen name="LinkMobileMoney" component={LinkMobileMoneyScreen} /> */}
