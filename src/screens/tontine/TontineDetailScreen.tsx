@@ -34,7 +34,15 @@ import * as tontineApi from '@services/api/tontine.api';
 import paymentApi from '@services/api/payment.api';
 import {IS_SUPABASE_CONFIGURED} from '@config/appConfig';
 import {formatCurrency, formatDate, formatRelativeTime} from '@utils/formatting';
+import {buildSchedule, nextBeneficiaries} from '@utils/tontineSchedule';
 import {formatFcfa} from '@utils/money';
+
+const SCHED_MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const fmtSchedDate = (d: Date | null): string =>
+  d ? `${d.getDate()} ${SCHED_MONTHS[d.getMonth()]} ${d.getFullYear()}` : 'date à définir';
+const frequencyLabel = (f: string): string =>
+  ({Daily: 'chaque jour', Weekly: 'chaque semaine', BiWeekly: 'tous les 15 jours', Monthly: 'chaque mois'} as any)[f] ??
+  'selon la fréquence';
 
 type DetailRoute = RouteProp<TontinesStackParamList, 'TontineDetail'>;
 type DetailNav = StackNavigationProp<TontinesStackParamList, 'TontineDetail'>;
@@ -149,6 +157,23 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const members = t.members ?? [];
   const activities = t.activities ?? [];
 
+  // Projected rotation schedule (who receives what & when) — works before activation.
+  const schedule = buildSchedule({
+    members: members.map((m: any) => ({
+      userId: m.userId,
+      name: m.user?.fullName ?? m.fullName ?? 'Membre',
+      receptionOrder: m.receptionOrder,
+      nbTetes: m.nbTetes ?? 1,
+    })),
+    contributionAmount: t.contributionAmount,
+    frequency: t.frequency,
+    startDate: t.startDate,
+    beneficiairesParTour: t.beneficiairesParTour ?? 1,
+    currentRound: t.currentRound ?? 0,
+    status: t.status,
+  });
+  const nextRound = nextBeneficiaries(schedule);
+
   const Stat: React.FC<{icon: React.ReactNode; label: string; value: string}> = ({icon, label, value}) => (
     <View style={s.statItem}>
       <View style={s.statIcon}>{icon}</View>
@@ -239,7 +264,7 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
               </View>
             )}
 
-            {t.status === 'Active' && (t.nextBeneficiary || t.currentBalance != null) && (
+            {nextRound && t.status !== 'Completed' && t.status !== 'Cancelled' && (
               <View style={s.block}>
                 <Text style={s.blockTitle}>{copy.nextBeneficiary}</Text>
                 {(t.beneficiairesParTour ?? 1) > 1 && (
@@ -250,20 +275,24 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
                     </Text>
                   </View>
                 )}
-                {t.nextBeneficiary && (
-                  <View style={s.beneficiary}>
-                    <Avatar
-                      name={t.nextBeneficiary.user?.fullName ?? t.nextBeneficiary.fullName}
-                      imageUrl={t.nextBeneficiary.user?.profilePhotoUrl ?? t.nextBeneficiary.avatar}
-                      size="lg"
-                      ring
-                    />
+                {t.status === 'Open' && (
+                  <Text style={[s.hint, {marginBottom: spacing.sm}]}>
+                    Prévisionnel (tour {nextRound.round}) — se confirme au lancement.
+                  </Text>
+                )}
+                {nextRound.beneficiaries.map(b => (
+                  <View key={b.userId} style={[s.beneficiary, {marginBottom: spacing.sm}]}>
+                    <Avatar name={b.name} size="lg" ring />
                     <View style={{flex: 1, marginLeft: spacing.md}}>
-                      <Text style={s.benName}>{t.nextBeneficiary.user?.fullName ?? t.nextBeneficiary.fullName}</Text>
-                      {t.nextDistributionDate && <Text style={s.hint}>Distribution: {formatDate(t.nextDistributionDate)}</Text>}
+                      <Text style={s.benName} numberOfLines={1}>
+                        {b.name}{b.tetes > 1 ? `  ×${b.tetes} têtes` : ''}
+                      </Text>
+                      <Text style={s.hint}>
+                        {fmtSchedDate(nextRound.date)} · {formatCurrency(b.amount, t.currency)}
+                      </Text>
                     </View>
                   </View>
-                )}
+                ))}
               </View>
             )}
 
@@ -413,40 +442,50 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
           ))}
 
         {activeTab === 'calendar' &&
-          (members.length === 0 ? (
-            <EmptyState icon="calendar" title="Calendrier indisponible" description="L'ordre de distribution apparaîtra une fois les membres réunis." />
+          (schedule.length === 0 ? (
+            <EmptyState icon="calendar" title="Calendrier indisponible" description="Le calendrier des tours apparaîtra dès qu'il y a au moins un membre." />
           ) : (
             <View style={{paddingTop: spacing.md}}>
-              <Text style={s.blockTitle}>Ordre de distribution</Text>
-              {[...members]
-                .sort((a: any, b: any) => (a.receptionOrder ?? 0) - (b.receptionOrder ?? 0))
-                .map((m: any, i: number) => {
-                  const order = m.receptionOrder ?? i + 1;
-                  const received = m.hasReceived;
-                  const current = m.isCurrentBeneficiary || order === t.currentRound;
-                  const label = received ? 'Reçu' : current ? 'En cours' : 'À venir';
-                  const tone = received ? colors.success : current ? colors.brand.terracotta : colors.text.tertiary;
-                  return (
-                    <Animated.View
-                      key={m.id ?? m.userId ?? i}
-                      entering={FadeInDown.delay(i * 40).duration(320)}
-                      style={s.roundRow}>
-                      <View style={[s.roundBadge, {backgroundColor: tone + '1A'}]}>
-                        <Text style={[s.roundNum, {color: tone}]}>{order}</Text>
-                      </View>
-                      <View style={{flex: 1}}>
-                        <Text style={s.memberName} numberOfLines={1}>
-                          {m.user?.fullName ?? m.fullName ?? 'Membre'}
-                        </Text>
-                        <Text style={s.hint}>
-                          Tour {order}/{t.totalRounds ?? members.length}
-                          {current && t.nextDistributionDate ? ` · ${formatDate(t.nextDistributionDate)}` : ''}
-                        </Text>
-                      </View>
-                      <Badge variant="soft" tone={tone} label={label} size="small" />
-                    </Animated.View>
-                  );
-                })}
+              <View style={s.calHeadRow}>
+                <Text style={s.blockTitle}>Qui reçoit, quand</Text>
+                <PressableScale
+                  style={s.calViewsBtn}
+                  onPress={() => rootNav.navigate('TontineSchedule', {tontineId})}>
+                  <Icon name="view-dashboard-outline" size={15} color={colors.accent.main} />
+                  <Text style={s.calViewsTxt}>Vues Gantt / Kanban</Text>
+                </PressableScale>
+              </View>
+              {t.status === 'Open' && (
+                <Text style={s.calProjNote}>
+                  Dates prévisionnelles (à partir du {formatDate(t.startDate)}, {frequencyLabel(t.frequency)}).
+                  Elles se confirment au lancement de la tontine.
+                </Text>
+              )}
+              {schedule.map((r, i) => {
+                const tone =
+                  r.status === 'past' ? colors.success : r.status === 'current' ? colors.brand.terracotta : colors.text.tertiary;
+                const label = r.status === 'past' ? 'Passé' : r.status === 'current' ? 'En cours' : 'À venir';
+                return (
+                  <Animated.View
+                    key={r.round}
+                    entering={FadeInDown.delay(i * 40).duration(320)}
+                    style={s.roundRow}>
+                    <View style={[s.roundBadge, {backgroundColor: tone + '1A'}]}>
+                      <Text style={[s.roundNum, {color: tone}]}>{r.round}</Text>
+                    </View>
+                    <View style={{flex: 1}}>
+                      <Text style={s.memberName} numberOfLines={1}>
+                        {r.beneficiaries.map(b => b.name + (b.tetes > 1 ? ` ×${b.tetes}` : '')).join(', ')}
+                      </Text>
+                      <Text style={s.hint}>
+                        {fmtSchedDate(r.date)} · {formatCurrency(r.beneficiaries[0]?.amount ?? 0, t.currency)}
+                        {r.beneficiaries.length > 1 ? ' / pers.' : ''}
+                      </Text>
+                    </View>
+                    <Badge variant="soft" tone={tone} label={label} size="small" />
+                  </Animated.View>
+                );
+              })}
             </View>
           ))}
 
@@ -549,6 +588,11 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     },
     blockTitle: {...typography.h3, color: colors.text.primary, marginBottom: spacing.md, fontWeight: '700'},
     hint: {...typography.caption, color: colors.text.secondary},
+    calHeadRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm},
+    calViewsBtn: {flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: spacing.sm,
+      backgroundColor: colors.accent[50], borderRadius: borderRadius.md},
+    calViewsTxt: {...typography.caption, color: colors.accent.main, fontWeight: '700'},
+    calProjNote: {...typography.caption, color: colors.text.secondary, marginBottom: spacing.md, lineHeight: 18},
     multiBenefChip: {flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.md,
       backgroundColor: colors.accent[50], borderRadius: borderRadius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md},
     multiBenefText: {...typography.caption, color: colors.accent.main, fontWeight: '600', flex: 1},

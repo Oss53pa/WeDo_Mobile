@@ -28,6 +28,7 @@ export type RootStackParamList = {
   Feedback: undefined;
   Kyc: undefined;
   Legal: {doc: 'cgu' | 'privacy'};
+  TontineSchedule: {tontineId: string};
   // Trust layer (MVP)
   Registre: {tontineId: string};
   OrganizerDashboard: {tontineId: string};

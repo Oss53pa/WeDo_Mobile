@@ -3,7 +3,7 @@
  * Steps: 1. Infos, 2. Finances, 3. Règles, 4. Membres, 5. Récap.
  */
 import React, {useState} from 'react';
-import {View, Text, StyleSheet, ScrollView, Alert, Switch} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, Alert, Switch, KeyboardAvoidingView, Platform, Keyboard} from 'react-native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -87,6 +87,7 @@ const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
   };
 
   const handleNext = () => {
+    Keyboard.dismiss();
     if (!validateStep(currentStep)) return;
     if (currentStep < TOTAL_STEPS) setCurrentStep(p => p + 1);
   };
@@ -288,7 +289,9 @@ const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
   };
 
   return (
-    <View style={s.container}>
+    <KeyboardAvoidingView
+      style={s.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[s.header, {paddingTop: insets.top + spacing.sm}]}>
         <PressableScale onPress={handleBack} style={s.backBtn}>
           <ChevronLeftIcon size={22} color={colors.text.primary} />
@@ -303,7 +306,11 @@ const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
         <ProgressBar progress={(currentStep / TOTAL_STEPS) * 100} height={6} />
       </View>
 
-      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag">
         <Animated.View key={currentStep} entering={FadeIn.duration(280)}>
           {renderStep()}
         </Animated.View>
@@ -319,7 +326,7 @@ const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
           <Button title="Créer la tontine" variant="gradient" onPress={handleSubmit} loading={isLoading} style={{flex: 1}} />
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

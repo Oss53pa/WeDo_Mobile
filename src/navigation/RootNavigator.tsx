@@ -20,6 +20,7 @@ import KycP2Screen from '@screens/profile/KycP2Screen';
 import AddMobileMoneyAccountScreen from '@screens/payment/AddMobileMoneyAccountScreen';
 import RegistreScreen from '@screens/tontine/RegistreScreen';
 import OrganizerDashboardScreen from '@screens/tontine/OrganizerDashboardScreen';
+import TontineScheduleScreen from '@screens/tontine/TontineScheduleScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -48,6 +49,7 @@ const RootNavigator: React.FC<RootNavigatorProps> = ({isAuthenticated}) => {
           <Stack.Screen name="AddMobileMoneyAccount" component={AddMobileMoneyAccountScreen} />
           <Stack.Screen name="Registre" component={RegistreScreen} />
           <Stack.Screen name="OrganizerDashboard" component={OrganizerDashboardScreen} />
+          <Stack.Screen name="TontineSchedule" component={TontineScheduleScreen} />
           {/* Additional modal screens accessible from anywhere */}
           {/* <Stack.Screen
             name="TontineDetail"
