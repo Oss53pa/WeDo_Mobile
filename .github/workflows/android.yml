@@ -59,6 +59,19 @@ jobs:
             echo 'apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")' >> "$GRADLE"
           fi
 
+      # Sign every build with ONE stable keystore so updates install in place
+      # (no uninstall/reinstall). Its creds match the debug signingConfig that the
+      # release buildType uses, so it's a drop-in replacement — no Gradle edits.
+      # Generate it once via the "Bootstrap signing keystore" workflow.
+      - name: Use the stable signing keystore
+        run: |
+          if [ -f signing/wedo-stable.keystore ]; then
+            cp signing/wedo-stable.keystore android/app/debug.keystore
+            echo "✓ Release signed with the committed stable keystore."
+          else
+            echo "::warning::No signing/wedo-stable.keystore yet — run the 'Bootstrap signing keystore' workflow once so APK updates install in place."
+          fi
+
       - name: Build release APK
         run: |
           chmod +x android/gradlew
