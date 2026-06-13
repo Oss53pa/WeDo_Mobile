@@ -18,6 +18,7 @@ import {
   LoadingSpinner,
   EmptyState,
   PressableScale,
+  useToast,
 } from '@components/common';
 import {
   CalendarIcon,
@@ -49,11 +50,13 @@ const OrganizerDashboardScreen: React.FC<{navigation: Nav; route: Route}> = ({
   const {colors} = useTheme();
   const s = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
+  const {show} = useToast();
 
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<trustApi.OrganizerOverview | null>(null);
   const [sequestre, setSequestre] = useState<trustApi.Sequestre | null>(null);
   const [check, setCheck] = useState<trustApi.RegistreVerification | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -73,6 +76,31 @@ const OrganizerDashboardScreen: React.FC<{navigation: Nav; route: Route}> = ({
   useEffect(() => {
     load();
   }, [load]);
+
+  const confirmPayment = useCallback(
+    async (contributionId: string, name: string) => {
+      setConfirmingId(contributionId);
+      try {
+        const res = await trustApi.confirmerPaiementMembre(contributionId);
+        if (res.success) {
+          show(
+            res.distribution
+              ? `Paiement de ${name} confirmé — le tour est complet, distribution effectuée !`
+              : `Paiement de ${name} confirmé et versé au séquestre.`,
+            {type: 'success'},
+          );
+          await load();
+        } else {
+          show(res.error ?? 'Confirmation impossible.', {type: 'error'});
+        }
+      } catch (e: any) {
+        show(e?.message ?? 'Confirmation impossible.', {type: 'error'});
+      } finally {
+        setConfirmingId(null);
+      }
+    },
+    [load, show],
+  );
 
   if (loading) return <LoadingSpinner fullScreen text="Chargement du tableau de bord…" />;
 
@@ -186,6 +214,57 @@ const OrganizerDashboardScreen: React.FC<{navigation: Nav; route: Route}> = ({
           </Card>
         </Animated.View>
 
+        {/* Pending contributions to confirm (cash / bank transfer) */}
+        <Animated.View entering={FadeInDown.delay(90).duration(360)} style={s.section}>
+          <View style={s.rowBetween}>
+            <Text style={s.sectionTitle}>Cotisations à confirmer</Text>
+            {o.pending.length > 0 && (
+              <Badge variant="count" label={String(o.pending.length)} size="small" />
+            )}
+          </View>
+          {o.pending.length === 0 ? (
+            <EmptyState
+              icon="check-circle"
+              title="Tout est à jour"
+              description="Aucune cotisation en attente de confirmation pour ce tour."
+            />
+          ) : (
+            o.pending.map((p, i) => {
+              const method =
+                p.paymentMethod === 'Cash'
+                  ? 'Espèces'
+                  : p.paymentMethod === 'BankTransfer'
+                    ? 'Virement'
+                    : p.paymentMethod === 'MobileMoney'
+                      ? 'Mobile Money'
+                      : 'En attente';
+              return (
+                <Animated.View key={p.contributionId} entering={FadeInDown.delay(110 + i * 40).duration(300)}>
+                  <View style={s.pendingRow}>
+                    <Avatar name={p.fullName} size="md" />
+                    <View style={{flex: 1, marginLeft: spacing.md}}>
+                      <Text style={s.riskName} numberOfLines={1}>{p.fullName}</Text>
+                      <Text style={s.pendingMeta}>
+                        {formatCurrency(p.amount, devise)} · {method}
+                      </Text>
+                    </View>
+                    <Button
+                      title="Confirmer"
+                      variant="gradient"
+                      gradient="emerald"
+                      size="small"
+                      icon="check"
+                      loading={confirmingId === p.contributionId}
+                      disabled={confirmingId !== null}
+                      onPress={() => confirmPayment(p.contributionId, p.fullName)}
+                    />
+                  </View>
+                </Animated.View>
+              );
+            })
+          )}
+        </Animated.View>
+
         {/* Members at risk */}
         <Animated.View entering={FadeInDown.delay(120).duration(360)} style={s.section}>
           <View style={s.rowBetween}>
@@ -272,6 +351,19 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
     riskName: {...typography.bodyMedium, color: colors.text.primary, fontWeight: '700'},
     riskMeta: {flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3},
     riskStatus: {...typography.small, color: colors.text.secondary},
+    pendingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface.default,
+      borderRadius: borderRadius.lg,
+      padding: spacing.md,
+      marginBottom: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border.subtle,
+      ...shadows.sm,
+      shadowColor: colors.shadowColor,
+    },
+    pendingMeta: {...typography.small, color: colors.text.secondary, marginTop: 3},
   });
 
 export default OrganizerDashboardScreen;

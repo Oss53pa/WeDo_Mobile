@@ -254,6 +254,16 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
                   style={{marginTop: spacing.sm}}
                 />
               )}
+              {isAdmin && t.status !== 'Open' && (
+                <Button
+                  title="Tableau de bord organisateur"
+                  variant="secondary"
+                  fullWidth
+                  icon="view-dashboard"
+                  onPress={() => rootNav.navigate('OrganizerDashboard', {tontineId})}
+                  style={{marginTop: spacing.sm}}
+                />
+              )}
               {isAdmin && (
                 <Button
                   title="Gérer la tontine"

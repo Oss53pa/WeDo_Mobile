@@ -165,12 +165,23 @@ export const getSequestre = async (
   };
 };
 
+export interface PendingContribution {
+  contributionId: string;
+  userId: string;
+  fullName: string;
+  amount: number;
+  status: string;
+  paymentMethod?: string;
+  dueDate: string;
+}
+
 export interface OrganizerOverview {
   round: number;
   totalRounds: number;
   paidCount: number;
   activeCount: number;
   nextDueDate?: string;
+  pending: PendingContribution[];
   membersAtRisk: Array<{
     userId: string;
     fullName: string;
@@ -185,7 +196,7 @@ export const getOrganizerOverview = async (
   tontineId: string,
 ): Promise<OrganizerOverview> => {
   if (!IS_SUPABASE_CONFIGURED) {
-    return {round: 1, totalRounds: 3, paidCount: 2, activeCount: 3, membersAtRisk: []};
+    return {round: 1, totalRounds: 3, paidCount: 2, activeCount: 3, pending: [], membersAtRisk: []};
   }
   const {data: tontine} = await supabase
     .from('tontines')
@@ -202,11 +213,25 @@ export const getOrganizerOverview = async (
 
   const {data: contribs} = await supabase
     .from('contributions')
-    .select('user_id, status, round, due_date, profiles(full_name)')
+    .select('id, user_id, amount, status, round, due_date, payment_method, profiles(full_name)')
     .eq('tontine_id', tontineId)
     .eq('round', round);
 
   const paidCount = (contribs || []).filter((c: any) => c.status === 'Paid').length;
+
+  const pending: PendingContribution[] = (contribs || [])
+    .filter((c: any) => c.status !== 'Paid')
+    .map((c: any) => ({
+      contributionId: c.id,
+      userId: c.user_id,
+      fullName: c.profiles?.full_name ?? 'Membre',
+      amount: c.amount,
+      status: c.status,
+      paymentMethod: c.payment_method ?? undefined,
+      dueDate: c.due_date,
+    }))
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
   const membersAtRisk = (contribs || [])
     .filter((c: any) => c.status === 'Late' || c.status === 'Failed')
     .map((c: any) => ({
@@ -217,10 +242,7 @@ export const getOrganizerOverview = async (
       dueDate: c.due_date,
     }));
 
-  const nextDueDate = (contribs || [])
-    .filter((c: any) => c.status !== 'Paid')
-    .map((c: any) => c.due_date)
-    .sort()[0];
+  const nextDueDate = pending.map(p => p.dueDate).sort()[0];
 
   return {
     round,
@@ -228,8 +250,27 @@ export const getOrganizerOverview = async (
     paidCount,
     activeCount: activeCount ?? 0,
     nextDueDate,
+    pending,
     membersAtRisk,
   };
 };
 
-export default {getRegistre, verifierRegistre, getSequestre, getOrganizerOverview};
+/** Organizer/treasurer confirms a member's cash or bank-transfer contribution. */
+export const confirmerPaiementMembre = async (
+  contributionId: string,
+): Promise<{success: boolean; already?: boolean; distribution?: string | null; error?: string}> => {
+  if (!IS_SUPABASE_CONFIGURED) return {success: true};
+  const {data, error} = await supabase.rpc('confirmer_paiement_membre', {
+    p_contribution_id: contributionId,
+  });
+  if (error) throw new Error(error.message);
+  return data as any;
+};
+
+export default {
+  getRegistre,
+  verifierRegistre,
+  getSequestre,
+  getOrganizerOverview,
+  confirmerPaiementMembre,
+};
