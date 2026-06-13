@@ -65,13 +65,13 @@ const STEPS: Step[] = [
 ];
 
 const HowItWorksScreen: React.FC<{navigation: any}> = ({navigation}) => {
-  const {colors} = useTheme();
+  const {colors, copy} = useTheme();
   const s = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
 
   return (
     <View style={s.container}>
-      <ScreenHeader title="Comment ça marche" onBack={() => navigation.goBack()} />
+      <ScreenHeader title={copy.help} onBack={() => navigation.goBack()} />
       <ScrollView
         contentContainerStyle={[s.content, {paddingBottom: insets.bottom + spacing.xl}]}
         showsVerticalScrollIndicator={false}>

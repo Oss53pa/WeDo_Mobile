@@ -45,9 +45,11 @@ const TabButton: React.FC<{
   focused: boolean;
   onPress: () => void;
 }> = ({routeName, focused, onPress}) => {
-  const {colors} = useTheme();
+  const {colors, copy} = useTheme();
   const s = useThemedStyles(makeStyles);
   const IconCmp = ICONS[routeName];
+  // The "Tontines" tab follows the active ambiance's word (Groupes / Gbonhi…).
+  const label = routeName === 'Tontines' ? copy.tontinesTab : LABELS[routeName] ?? routeName;
 
   const dotStyle = useAnimatedStyle(() => ({
     opacity: withTiming(focused ? 1 : 0, {duration: 180}),
@@ -61,12 +63,12 @@ const TabButton: React.FC<{
       scaleTo={0.9}
       accessibilityRole="tab"
       accessibilityState={{selected: focused}}
-      accessibilityLabel={LABELS[routeName] ?? routeName}>
+      accessibilityLabel={label}>
       {IconCmp && (
         <IconCmp size={24} color={focused ? colors.accent.main : colors.text.tertiary} filled={focused} />
       )}
       <Text style={[s.label, {color: focused ? colors.accent.main : colors.text.tertiary}]}>
-        {LABELS[routeName] ?? routeName}
+        {label}
       </Text>
       <Animated.View style={[s.dot, {backgroundColor: colors.accent.main}, dotStyle]} />
     </PressableScale>

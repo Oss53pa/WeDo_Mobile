@@ -31,7 +31,7 @@ const CODE_LENGTH = 8;
 type Props = RootStackScreenProps<'JoinByCode'>;
 
 const JoinByCodeScreen: React.FC<Props> = ({navigation}) => {
-  const {colors} = useTheme();
+  const {colors, copy} = useTheme();
   const s = useThemedStyles(makeStyles);
   const {show} = useToast();
 
@@ -115,7 +115,7 @@ const JoinByCodeScreen: React.FC<Props> = ({navigation}) => {
               {cleaned.length}/{CODE_LENGTH}
             </Text>
             <Button
-              title="Rejoindre la tontine"
+              title={copy.join}
               onPress={handleJoin}
               loading={isLoading}
               disabled={isLoading || cleaned.length !== CODE_LENGTH}

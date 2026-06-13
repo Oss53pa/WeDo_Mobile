@@ -47,7 +47,7 @@ type TabType = 'overview' | 'members' | 'calendar' | 'activity';
 const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {tontineId} = route.params;
   const dispatch = useDispatch<AppDispatch>();
-  const {colors, gradients} = useTheme();
+  const {colors, gradients, copy} = useTheme();
   const s = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const {show} = useToast();
@@ -240,7 +240,7 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
 
             {t.status === 'Active' && (t.nextBeneficiary || t.currentBalance != null) && (
               <View style={s.block}>
-                <Text style={s.blockTitle}>Prochain tour</Text>
+                <Text style={s.blockTitle}>{copy.nextBeneficiary}</Text>
                 {t.nextBeneficiary && (
                   <View style={s.beneficiary}>
                     <Avatar
@@ -283,7 +283,7 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
             <View style={s.actions}>
               {t.status === 'Open' && !t.isMember && (
                 <Button
-                  title="Rejoindre la tontine"
+                  title={copy.join}
                   variant="gradient"
                   fullWidth
                   size="large"
@@ -294,7 +294,7 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
               )}
               {t.status === 'Active' && (
                 <Button
-                  title="Contribuer maintenant"
+                  title={copy.pay}
                   variant="gradient"
                   fullWidth
                   size="large"

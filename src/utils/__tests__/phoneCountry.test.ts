@@ -31,18 +31,30 @@ describe('detectCountry', () => {
 describe('resolveAmbianceCopy — Élan regional jargon', () => {
   it('uses nouchi (Ouest) by default', () => {
     const ouest = resolveAmbianceCopy('elan', 'ouest');
-    expect(ouest.greeting).toBe('Yo môgô');
-    expect(ouest.tontineWord).toBe('le do');
+    expect(ouest.greeting).toBe('Yo Môgô');
+    expect(ouest.balanceLabel).toBe('Ton Djê est calé');
+    expect(ouest.tontineWord).toBe('Gbonhi');
+    expect(ouest.pay).toBe('Envoyer le Djê');
+    expect(ouest.nextBeneficiary).toBe("C'est qui le prochain");
   });
 
   it('switches to camfranglais for Afrique Centrale', () => {
     const centre = resolveAmbianceCopy('elan', 'centre');
     expect(centre.greeting).toBe('Ashia');
     expect(centre.tontineWord).toBe('njangi');
+    expect(centre.myTontines).toBe('Mes njangi');
   });
 
-  it('non-Élan ambiances ignore the region', () => {
-    expect(resolveAmbianceCopy('heritage', 'centre').greeting).toBe('Akwaba');
+  it('Héritage speaks "français facile", region-independent', () => {
+    const h = resolveAmbianceCopy('heritage', 'centre');
+    expect(h.greeting).toBe('Akwaba');
+    expect(h.balanceLabel).toBe('Ton argent est gardé');
+    expect(h.myTontines).toBe('Mes groupes');
+  });
+
+  it('Standard/Souverain keep neutral French and ignore the region', () => {
     expect(resolveAmbianceCopy('standard', 'ouest').tontineWord).toBe('tontine');
+    expect(resolveAmbianceCopy('souverain', 'centre').greeting).toBe('Bonsoir');
+    expect(resolveAmbianceCopy('souverain', 'centre').pay).toBe('Cotiser');
   });
 });

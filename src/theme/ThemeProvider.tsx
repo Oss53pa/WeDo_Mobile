@@ -25,6 +25,7 @@ import {
   resolveAmbianceCopy,
   type AmbianceKey,
   type AdinkraKey,
+  type AmbianceCopy,
 } from './ambiances';
 import type {AfricaRegion} from '../utils/phoneCountry';
 import {typography} from './typography';
@@ -52,9 +53,11 @@ export interface ThemedTokens {
   /** Selected ambiance (mood) + its signature adinkra & greeting. */
   ambiance: AmbianceKey;
   adinkra: AdinkraKey;
+  /** Full voice pack for the active ambiance + region. */
+  copy: AmbianceCopy;
   greeting: string;
   balanceLabel: string;
-  /** Word for "tontine" in the active ambiance/region (le do / njangi / tontine). */
+  /** Word for "tontine" in the active ambiance/region (Gbonhi / njangi / tontine). */
   tontineWord: string;
   /** User's African region, derived from their phone indicatif. */
   region: AfricaRegion;
@@ -95,6 +98,7 @@ const buildTokens = (
     gradients,
     ambiance,
     adinkra: def.adinkra,
+    copy,
     greeting: copy.greeting,
     balanceLabel: copy.balanceLabel,
     tontineWord: copy.tontineWord,

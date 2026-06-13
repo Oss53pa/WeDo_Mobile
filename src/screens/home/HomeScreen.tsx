@@ -61,7 +61,7 @@ type HomeScreenProps = MainTabScreenProps<'Home'>;
 
 const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
   const dispatch = useDispatch<AppDispatch>();
-  const {colors, gradients, ambiance, greeting: ambianceGreeting, balanceLabel} = useTheme();
+  const {colors, gradients, ambiance, greeting: ambianceGreeting, balanceLabel, copy} = useTheme();
   const s = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
 
@@ -254,7 +254,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
       {/* Active tontines */}
       <Animated.View entering={FadeInDown.delay(320).duration(420)} style={s.section}>
         <View style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>Mes tontines actives</Text>
+          <Text style={s.sectionTitle}>{copy.myTontines}</Text>
           <PressableScale onPress={() => navigation.navigate('Tontines', {screen: 'TontinesList'})} style={s.seeAllBtn}>
             <Text style={s.seeAll}>Voir tout</Text>
             <ChevronRightIcon size={16} color={colors.accent.main} />

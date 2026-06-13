@@ -21,24 +21,46 @@ const diag = {start: {x: 0, y: 0}, end: {x: 1, y: 1}} as const;
 type AccentOverride = Partial<Record<keyof AppColors['accent'], string>>;
 type GradientOverride = Partial<Record<keyof AppGradients, GradientDef>>;
 
+/**
+ * Voice pack — the user-facing words an ambiance uses. Standard/Souverain speak
+ * neutral French, Héritage speaks "français facile" (mamans & aînés), Élan speaks
+ * the regional youth slang (nouchi à l'Ouest, camfranglais au Centre).
+ */
+export interface AmbianceCopy {
+  /** Home greeting word. */
+  greeting: string;
+  /** Label above the balance amount. */
+  balanceLabel: string;
+  /** Singular inline noun for a tontine ('tontine', 'groupe', 'Gbonhi'…). */
+  tontineWord: string;
+  /** Short label for the bottom "Tontines" tab. */
+  tontinesTab: string;
+  /** Section title "Mes tontines". */
+  myTontines: string;
+  /** Primary "pay / contribute" action. */
+  pay: string;
+  /** "Join a tontine" action. */
+  join: string;
+  /** "How it works" entry/title. */
+  help: string;
+  /** "Next beneficiary / whose turn" label. */
+  nextBeneficiary: string;
+}
+
 export interface AmbianceDef {
   key: AmbianceKey;
   label: string;
   tagline: string;
   description: string;
   adinkra: AdinkraKey;
-  /** Home greeting word, per ambiance personality. */
-  greeting: string;
-  /** Label above the balance amount (Élan uses nouchi). */
-  balanceLabel: string;
-  /** How this ambiance names a tontine ('le do', 'njangi', 'tontine'). */
-  tontineWord: string;
+  /** The ambiance's full voice pack (default / Ouest for Élan). */
+  copy: AmbianceCopy;
   /**
-   * Regional copy overrides — only Élan varies its jargon by the user's region,
-   * derived from their phone indicatif: 'ouest' → nouchi, 'centre' → camfranglais.
-   * The base fields above act as the default (Ouest / nouchi).
+   * Regional voice overrides — only Élan varies by the user's region, derived
+   * from their phone indicatif: 'ouest' → nouchi (the base), 'centre' →
+   * camfranglais. Each region only needs to override the words that change.
    */
-  regional?: Partial<Record<AfricaRegion, RegionalCopy>>;
+  regional?: Partial<Record<AfricaRegion, Partial<AmbianceCopy>>>;
   /** Swatch shown in the selector. */
   swatch: string[];
   /** Animation character. */
@@ -47,17 +69,18 @@ export interface AmbianceDef {
   gradients?: GradientOverride;
 }
 
-export interface RegionalCopy {
-  greeting?: string;
-  balanceLabel?: string;
-  tontineWord?: string;
-}
-
-export interface AmbianceCopy {
-  greeting: string;
-  balanceLabel: string;
-  tontineWord: string;
-}
+// Neutral French voice, shared by Standard & Souverain (greeting differs).
+const FR_COPY: AmbianceCopy = {
+  greeting: 'Bonjour',
+  balanceLabel: 'Solde sécurisé',
+  tontineWord: 'tontine',
+  tontinesTab: 'Tontines',
+  myTontines: 'Mes tontines',
+  pay: 'Cotiser',
+  join: 'Rejoindre une tontine',
+  help: 'Comment ça marche',
+  nextBeneficiary: 'Prochain bénéficiaire',
+};
 
 export const AMBIANCES: Record<AmbianceKey, AmbianceDef> = {
   standard: {
@@ -66,9 +89,7 @@ export const AMBIANCES: Record<AmbianceKey, AmbianceDef> = {
     tagline: 'Kente Héritage',
     description: "L'identité WeDo par défaut : sobre, premium, terre et or.",
     adinkra: 'kente',
-    greeting: 'Bonjour',
-    balanceLabel: 'Solde sécurisé',
-    tontineWord: 'tontine',
+    copy: FR_COPY,
     swatch: ['#C2683C', '#D4A03C', '#1F7A58', '#3A3E7C'],
     motion: 'calme',
     // no override — uses the base scheme
@@ -80,9 +101,18 @@ export const AMBIANCES: Record<AmbianceKey, AmbianceDef> = {
     tagline: 'Sankofa · la sagesse qui se transmet',
     description: 'Pour nos mamans et les cercles de tradition. Or royal, vert récolte, terre des ancêtres.',
     adinkra: 'sankofa',
-    greeting: 'Akwaba',
-    balanceLabel: 'Solde sécurisé',
-    tontineWord: 'tontine',
+    // "Français facile" — words our mamans & aînés read without effort.
+    copy: {
+      greeting: 'Akwaba',
+      balanceLabel: 'Ton argent est gardé',
+      tontineWord: 'groupe',
+      tontinesTab: 'Groupes',
+      myTontines: 'Mes groupes',
+      pay: "Mettre l'argent",
+      join: 'Entrer dans un groupe',
+      help: 'Comment ça marche',
+      nextBeneficiary: 'À qui le tour',
+    },
     swatch: ['#9E7320', '#D4A03C', '#1F7A58', '#6B4A29'],
     motion: 'calme',
     accent: {main: '#D4A03C', orange: '#D4A03C', light: '#E6C172', dark: '#9E7320', contrast: '#2C2014'},
@@ -99,13 +129,33 @@ export const AMBIANCES: Record<AmbianceKey, AmbianceDef> = {
     description: 'Pour les jeunes. Couleurs franches du Kente, formes ludiques, plus de mouvement.',
     adinkra: 'nkonsonkonson',
     // Base = Afrique de l'Ouest / nouchi (Côte d'Ivoire, Mali, Burkina…).
-    greeting: 'Yo môgô',
-    balanceLabel: 'Tes sous, sécurisés',
-    tontineWord: 'le do',
+    // Positif & fun : Djê = l'argent, Gbonhi = le groupe/la bande.
+    copy: {
+      greeting: 'Yo Môgô',
+      balanceLabel: 'Ton Djê est calé',
+      tontineWord: 'Gbonhi',
+      tontinesTab: 'Gbonhi',
+      myTontines: 'Mes Gbonhi',
+      pay: 'Envoyer le Djê',
+      join: 'Rejoindre Gbonhi',
+      help: 'Ça gère comment',
+      nextBeneficiary: "C'est qui le prochain",
+    },
     regional: {
-      // Afrique Centrale / camfranglais (Cameroun, Gabon, Congo…). Positif,
-      // chaleureux : « Ashia » = compassion/solidarité ; « njangi » = tontine.
-      centre: {greeting: 'Ashia', balanceLabel: 'Tes sous, sécurisés', tontineWord: 'njangi'},
+      // Afrique Centrale / camfranglais (Cameroun, Gabon, Congo…). Positif &
+      // chaleureux : « Ashia » = solidarité/compassion ; « njangi » = tontine ;
+      // « moni » = l'argent. (Brouillon — à valider/affiner avec l'utilisateur.)
+      centre: {
+        greeting: 'Ashia',
+        balanceLabel: 'Ton moni est safe',
+        tontineWord: 'njangi',
+        tontinesTab: 'Njangi',
+        myTontines: 'Mes njangi',
+        pay: 'Envoyer le moni',
+        join: 'Rejoindre le njangi',
+        help: 'Ça se passe comment',
+        nextBeneficiary: "C'est qui le next",
+      },
     },
     swatch: ['#D4A03C', '#1F7A58', '#B23A4E', '#666BB3'],
     motion: 'vif',
@@ -122,9 +172,8 @@ export const AMBIANCES: Record<AmbianceKey, AmbianceDef> = {
     tagline: 'Adinkrahene · le chef des symboles',
     description: 'Pour les organisateurs et cercles d’affaires. Bleu nuit, or ciselé, données en avant.',
     adinkra: 'adinkrahene',
-    greeting: 'Bonsoir',
-    balanceLabel: 'Solde sécurisé',
-    tontineWord: 'tontine',
+    // Pro / sobre — same neutral French, just a more formal greeting.
+    copy: {...FR_COPY, greeting: 'Bonsoir'},
     swatch: ['#1C1E44', '#34376E', '#E6C172', '#2C2014'],
     motion: 'precis',
     accent: {main: '#3A3E7C', orange: '#3A3E7C', light: '#666BB3', dark: '#252856', contrast: '#FFFFFF'},
@@ -143,8 +192,8 @@ export const AMBIANCE_LIST: AmbianceDef[] = [
 ];
 
 /**
- * Resolve the ambiance's copy (greeting / balance label / tontine word) for a
- * given region. Only Élan varies by region; every other ambiance ignores it.
+ * Resolve the ambiance's full voice pack for a given region. Only Élan varies by
+ * region (nouchi ↔ camfranglais); every other ambiance ignores it.
  */
 export const resolveAmbianceCopy = (
   key: AmbianceKey,
@@ -152,11 +201,7 @@ export const resolveAmbianceCopy = (
 ): AmbianceCopy => {
   const amb = AMBIANCES[key] ?? AMBIANCES.standard;
   const r = amb.regional?.[region];
-  return {
-    greeting: r?.greeting ?? amb.greeting,
-    balanceLabel: r?.balanceLabel ?? amb.balanceLabel,
-    tontineWord: r?.tontineWord ?? amb.tontineWord,
-  };
+  return r ? {...amb.copy, ...r} : amb.copy;
 };
 
 /** Merge an ambiance's overrides onto the base colors + gradients of a scheme. */
