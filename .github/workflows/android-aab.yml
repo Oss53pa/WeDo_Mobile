@@ -1,0 +1,81 @@
+name: Android AAB (Play Store)
+
+# Builds a release-signed Android App Bundle (.aab) for Google Play.
+# Manual trigger only — does NOT run on push, so it never disturbs the working
+# APK build. Requires these repository SECRETS (Settings → Secrets → Actions):
+#   ANDROID_KEYSTORE_BASE64   base64 of your upload keystore (.jks)
+#   ANDROID_KEYSTORE_PASSWORD  keystore password
+#   ANDROID_KEY_ALIAS          key alias (e.g. "wedo-upload")
+#   ANDROID_KEY_PASSWORD       key password
+# Generate the keystore once (keep the .jks + passwords safe — they sign every update):
+#   keytool -genkeypair -v -keystore wedo-upload.jks -alias wedo-upload \
+#     -keyalg RSA -keysize 2048 -validity 10000
+#   base64 -w0 wedo-upload.jks   # paste into ANDROID_KEYSTORE_BASE64
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Align native deps to the Expo SDK
+        run: npx expo install --fix
+
+      - name: Generate the native Android project (CNG prebuild)
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Bundle vector-icon fonts
+        run: |
+          GRADLE=android/app/build.gradle
+          if ! grep -q "react-native-vector-icons/fonts.gradle" "$GRADLE"; then
+            echo 'apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")' >> "$GRADLE"
+          fi
+
+      - name: Decode upload keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload.keystore
+
+      - name: Wire release signing into Gradle
+        run: |
+          GRADLE=android/app/build.gradle
+          # add a `release` signingConfig (reads creds from env at build time)
+          perl -0pi -e 's/signingConfigs \{/signingConfigs {\n        release {\n            storeFile file("upload.keystore")\n            storePassword System.getenv("WEDO_KS_PASS")\n            keyAlias System.getenv("WEDO_KEY_ALIAS")\n            keyPassword System.getenv("WEDO_KEY_PASS")\n        }/' "$GRADLE"
+          # point the release buildType at it (replace the 2nd debug ref = the release one)
+          sed -i '0,/signingConfig signingConfigs.debug/! s/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/' "$GRADLE"
+
+      - name: Build signed AAB
+        env:
+          WEDO_KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          WEDO_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          WEDO_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew bundleRelease --no-daemon --stacktrace
+
+      - name: Collect AAB
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/bundle/release/app-release.aab dist/wedo.aab
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wedo-aab
+          path: dist/wedo.aab
+          if-no-files-found: error

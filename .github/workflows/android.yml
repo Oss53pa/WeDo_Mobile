@@ -76,18 +76,38 @@ jobs:
           path: dist/wedo.apk
           if-no-files-found: error
 
-      - name: Publish to the android-latest release
+      # Stable download link that NEVER 404s during a build: instead of swapping
+      # the asset on a single reused release (which leaves a gap mid-upload), each
+      # build publishes its OWN release marked `make_latest: true`. GitHub flips
+      # /releases/latest/download/wedo.apk atomically only once the new release is
+      # fully published — the old asset stays served until then.
+      #   STABLE LINK → https://github.com/Oss53pa/WeDo_Mobile/releases/latest/download/wedo.apk
+      - name: Read app version
+        id: ver
+        run: echo "v=$(node -p "require('./app.json').expo.version")" >> "$GITHUB_OUTPUT"
+
+      - name: Publish versioned release (atomic latest)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: android-latest
-          name: WeDo — APK (dernière version)
+          tag_name: v${{ steps.ver.outputs.v }}-b${{ github.run_number }}
+          name: WeDo ${{ steps.ver.outputs.v }} (build ${{ github.run_number }})
           body: |
-            APK de test WeDo généré automatiquement par la CI GitHub.
-            Connecté au backend Supabase de production : séquestre (cantonnement EME),
-            registre infalsifiable SHA-256, score de fiabilité, paliers P0→P2.
+            APK WeDo généré par la CI GitHub. Lien stable (ne casse jamais) :
+            https://github.com/Oss53pa/WeDo_Mobile/releases/latest/download/wedo.apk
 
-            Installation Android : Paramètres → autoriser l'installation depuis des
-            sources inconnues, puis ouvrir wedo.apk.
+            Backend Supabase de production : séquestre (cantonnement EME), registre
+            infalsifiable SHA-256, score de fiabilité, paliers P0→P2.
+            Installation Android : autoriser les sources inconnues, puis ouvrir wedo.apk.
           files: dist/wedo.apk
-          prerelease: true
-          make_latest: false
+          prerelease: false
+          make_latest: true
+
+      - name: Prune old builds (keep the 3 most recent)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 60 --json tagName,createdAt \
+            -q '[.[] | select(.tagName | startswith("v"))] | sort_by(.createdAt) | reverse | .[3:] | .[].tagName' \
+            | while read -r t; do
+                [ -n "$t" ] && gh release delete "$t" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+              done
