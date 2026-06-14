@@ -153,4 +153,61 @@ export const verifyKycP2 = async (input: KycP2Input): Promise<KycP2Result> => {
   };
 };
 
-export default {getMyPersonne, getMyScore, getScoreHistory, verifyKycP2};
+/* ─────────────────────────────────────────────────────────────────────────────
+ * KYC manuel (gratuit) : CNI recto/verso + selfie -> revue humaine -> palier P2.
+ * Les images vont dans le bucket privé `wedo-kyc` sous le dossier de l'utilisateur ;
+ * la soumission passe par la RPC submit_kyc.
+ * ──────────────────────────────────────────────────────────────────────────── */
+export type KycDocKind = 'recto' | 'verso' | 'selfie';
+export interface KycSubmission {
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt?: string;
+  reason?: string;
+}
+
+/** Upload une image KYC dans le dossier privé de l'utilisateur. Renvoie le chemin. */
+export const uploadKycImage = async (uri: string, kind: KycDocKind): Promise<string> => {
+  const {data: {user}} = await supabase.auth.getUser();
+  if (!user) throw new Error('Non authentifié');
+  const path = `${user.id}/${kind}.jpg`;
+  const blob = await (await fetch(uri)).blob();
+  const {error} = await supabase.storage
+    .from('wedo-kyc')
+    .upload(path, blob, {upsert: true, contentType: 'image/jpeg'});
+  if (error) throw new Error(error.message);
+  return path;
+};
+
+/** Soumet le dossier KYC complet (upload des 3 images + RPC). */
+export const submitKyc = async (input: {
+  cniNumber: string;
+  rectoUri: string;
+  versoUri: string;
+  selfieUri: string;
+}): Promise<{success: boolean; status?: string; error?: string}> => {
+  if (!IS_SUPABASE_CONFIGURED) return {success: true, status: 'pending'};
+  const recto = await uploadKycImage(input.rectoUri, 'recto');
+  const verso = await uploadKycImage(input.versoUri, 'verso');
+  const selfie = await uploadKycImage(input.selfieUri, 'selfie');
+  const {data, error} = await supabase.rpc('submit_kyc', {
+    p_cni_number: input.cniNumber, p_recto: recto, p_verso: verso, p_selfie: selfie,
+  });
+  if (error) throw new Error(error.message);
+  return data as any;
+};
+
+/** Statut de ma soumission KYC (null si jamais soumis). */
+export const getMyKyc = async (): Promise<KycSubmission | null> => {
+  if (!IS_SUPABASE_CONFIGURED) return null;
+  const {data: {user}} = await supabase.auth.getUser();
+  if (!user) return null;
+  const {data} = await supabase
+    .from('kyc_submissions')
+    .select('status, submitted_at, reason')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!data) return null;
+  return {status: (data as any).status, submittedAt: (data as any).submitted_at, reason: (data as any).reason ?? undefined};
+};
+
+export default {getMyPersonne, getMyScore, getScoreHistory, verifyKycP2, uploadKycImage, submitKyc, getMyKyc};

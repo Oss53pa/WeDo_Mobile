@@ -75,6 +75,29 @@ Deno.serve(async (req) => {
           { p_payout: payload.payoutId, p_provider: "sandbox", p_ref: `SBX-PO-${String(payload.payoutId).slice(0, 8)}` });
         return json({ ok: true, result: data });
       }
+      case "kycPending": {
+        // File de revue KYC : pièces (URLs signées temporaires pour la revue).
+        const { data: subs } = await admin.from("kyc_submissions")
+          .select("user_id, cni_number, cni_recto_path, cni_verso_path, selfie_path, submitted_at")
+          .eq("status", "pending").order("submitted_at", { ascending: true });
+        const items = [];
+        for (const sub of subs ?? []) {
+          const sign = async (p: string | null) =>
+            p ? (await admin.storage.from("wedo-kyc").createSignedUrl(p, 600)).data?.signedUrl ?? null : null;
+          items.push({
+            userId: sub.user_id, cniNumber: sub.cni_number, submittedAt: sub.submitted_at,
+            rectoUrl: await sign(sub.cni_recto_path),
+            versoUrl: await sign(sub.cni_verso_path),
+            selfieUrl: await sign(sub.selfie_path),
+          });
+        }
+        return json({ ok: true, items });
+      }
+      case "kycDecision": {
+        const { data } = await admin.rpc("kyc_decision",
+          { p_user: payload.userId, p_decision: payload.decision, p_reason: payload.reason ?? null, p_actor: user.id });
+        return json({ ok: true, result: data });
+      }
       default:
         return json({ error: "Unknown action" }, 400);
     }

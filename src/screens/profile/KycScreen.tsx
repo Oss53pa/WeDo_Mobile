@@ -2,9 +2,10 @@
  * KycScreen — identity verification overview: current status and the ladder of
  * KYC levels with transaction limits and required documents. Premium themed UI.
  */
-import React from 'react';
-import {View, Text, StyleSheet, ScrollView, Alert} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {View, Text, StyleSheet, ScrollView, Alert, Image} from 'react-native';
 import {StackNavigationProp} from '@react-navigation/stack';
+import * as ImagePicker from 'expo-image-picker';
 import Animated, {FadeInDown} from 'react-native-reanimated';
 import {
   Button,
@@ -13,8 +14,13 @@ import {
   Card,
   Badge,
   Chip,
+  Input,
+  PressableScale,
+  useToast,
 } from '@components/common';
 import {LockIcon, CheckIcon, InfoIcon} from '@components/icons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import * as identityApi from '@services/api/identity.api';
 import {
   useTheme,
   useThemedStyles,
@@ -50,11 +56,52 @@ const KycScreen: React.FC<{navigation: Nav}> = ({navigation}) => {
   const currentConfig =
     levels.find(l => l.level === currentLevel) ?? levels[0];
 
-  const handleVerify = () => {
-    Alert.alert(
-      'Vérification',
-      'Téléversement de documents — bientôt disponible.',
-    );
+  const {show} = useToast();
+  const [recto, setRecto] = useState<string | null>(null);
+  const [verso, setVerso] = useState<string | null>(null);
+  const [selfie, setSelfie] = useState<string | null>(null);
+  const [cniNumber, setCniNumber] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [kyc, setKyc] = useState<identityApi.KycSubmission | null>(null);
+
+  useEffect(() => {
+    identityApi.getMyKyc().then(setKyc).catch(() => {});
+  }, []);
+
+  const pick = async (kind: identityApi.KycDocKind, setUri: (u: string) => void) => {
+    const useCamera = kind === 'selfie';
+    const perm = useCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      show("Autorisation refusée (caméra/galerie).", {type: 'error'});
+      return;
+    }
+    const opts: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: kind === 'selfie',
+      aspect: kind === 'selfie' ? [1, 1] : undefined,
+      quality: 0.6,
+    };
+    const res = useCamera
+      ? await ImagePicker.launchCameraAsync(opts)
+      : await ImagePicker.launchImageLibraryAsync(opts);
+    if (!res.canceled && res.assets?.[0]) setUri(res.assets[0].uri);
+  };
+
+  const handleSubmit = async () => {
+    if (!cniNumber.trim()) return show('Indiquez votre numéro de pièce.', {type: 'error'});
+    if (!recto || !verso || !selfie) return show('Ajoutez le recto, le verso et un selfie.', {type: 'error'});
+    setSubmitting(true);
+    try {
+      await identityApi.submitKyc({cniNumber: cniNumber.trim(), rectoUri: recto, versoUri: verso, selfieUri: selfie});
+      setKyc({status: 'pending'});
+      show('Dossier envoyé ! Vérification sous 24-48 h.', {type: 'success'});
+    } catch (e: any) {
+      show(e?.message ?? "Échec de l'envoi.", {type: 'error'});
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -94,6 +141,53 @@ const KycScreen: React.FC<{navigation: Nav}> = ({navigation}) => {
             </Text>
           </GradientCard>
         </Animated.View>
+
+        {currentLevel < 2 && (
+          <Animated.View entering={FadeInDown.duration(360).delay(40)}>
+            <Card variant="default" padding={spacing.lg} style={s.verifyCard}>
+              <Text style={s.section}>Vérifier mon identité (Niveau 2)</Text>
+              {kyc?.status === 'pending' ? (
+                <View style={s.statusBox}>
+                  <Icon name="clock-outline" size={20} color={colors.brand.gold} />
+                  <Text style={s.statusText}>Dossier reçu — vérification sous 24-48 h.</Text>
+                </View>
+              ) : (
+                <>
+                  {kyc?.status === 'rejected' && (
+                    <View style={[s.statusBox, {backgroundColor: colors.brand.crimsonSoft}]}>
+                      <Icon name="alert-circle-outline" size={20} color={colors.brand.crimson} />
+                      <Text style={[s.statusText, {color: colors.brand.crimson}]}>
+                        Dossier refusé{kyc.reason ? ` : ${kyc.reason}` : ''}. Vous pouvez renvoyer.
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={s.verifyHint}>
+                    Photographiez votre pièce d'identité (recto et verso) et prenez un selfie.
+                    Un membre de l'équipe vérifie sous 24-48 h.
+                  </Text>
+                  <Input label="Numéro de la pièce" placeholder="Ex : CI0012345678" value={cniNumber} onChangeText={setCniNumber} />
+                  <View style={s.captureRow}>
+                    {([['recto', recto, setRecto, 'CNI recto'], ['verso', verso, setVerso, 'CNI verso'], ['selfie', selfie, setSelfie, 'Selfie']] as const).map(
+                      ([kind, uri, setter, label]) => (
+                        <PressableScale key={kind} style={s.captureTile} onPress={() => pick(kind, setter)}>
+                          {uri ? (
+                            <Image source={{uri}} style={s.capturePreview} />
+                          ) : (
+                            <Icon name={kind === 'selfie' ? 'camera-account' : 'card-account-details-outline'} size={26} color={colors.text.tertiary} />
+                          )}
+                          <Text style={s.captureLabel}>{uri ? '✓ ' : ''}{label}</Text>
+                        </PressableScale>
+                      ),
+                    )}
+                  </View>
+                  <Button title="Envoyer pour vérification" variant="gradient" gradient="sunset" fullWidth
+                    icon="shield-check" loading={submitting} disabled={submitting} onPress={handleSubmit}
+                    style={{marginTop: spacing.md}} />
+                </>
+              )}
+            </Card>
+          </Animated.View>
+        )}
 
         <Text style={s.section}>Niveaux de vérification</Text>
 
@@ -166,16 +260,8 @@ const KycScreen: React.FC<{navigation: Nav}> = ({navigation}) => {
                   </View>
                 )}
 
-                {!isUnlocked && lvl.level > currentLevel && (
-                  <Button
-                    title="Vérifier"
-                    variant="gradient"
-                    gradient="sunset"
-                    onPress={handleVerify}
-                    fullWidth
-                    icon="shield-check"
-                    style={{marginTop: spacing.md}}
-                  />
+                {!isUnlocked && lvl.level === 2 && (
+                  <Text style={s.levelHintP2}>↑ Utilisez « Vérifier mon identité » ci-dessus pour atteindre ce niveau.</Text>
                 )}
               </Card>
             </Animated.View>
@@ -226,6 +312,18 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
       fontWeight: '700',
       marginBottom: spacing.md,
     },
+    verifyCard: {marginBottom: spacing.lg, borderColor: colors.accent.main, borderWidth: 1.5},
+    verifyHint: {...typography.caption, color: colors.text.secondary, lineHeight: 18, marginBottom: spacing.md},
+    captureRow: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md},
+    captureTile: {
+      flex: 1, height: 92, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.border.default,
+      backgroundColor: colors.surface.sunken, alignItems: 'center', justifyContent: 'center', gap: 6, overflow: 'hidden',
+    },
+    capturePreview: {width: '100%', height: 62, borderTopLeftRadius: borderRadius.lg, borderTopRightRadius: borderRadius.lg},
+    captureLabel: {...typography.small, color: colors.text.secondary, fontWeight: '600', textAlign: 'center'},
+    statusBox: {flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.accent[50], borderRadius: borderRadius.lg, padding: spacing.md, marginVertical: spacing.sm},
+    statusText: {...typography.caption, color: colors.text.primary, flex: 1, lineHeight: 18},
+    levelHintP2: {...typography.caption, color: colors.accent.main, marginTop: spacing.md},
     levelCard: {marginBottom: spacing.md},
     levelHead: {
       flexDirection: 'row',
