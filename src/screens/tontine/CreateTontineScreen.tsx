@@ -24,6 +24,72 @@ interface Props {
 }
 const TOTAL_STEPS = 5;
 
+// --- Reusable selectors (MODULE level → stable identity, no remount on each keystroke) ---
+const OptionCard: React.FC<any> = ({selected, icon, label, onPress}) => {
+  const {colors} = useTheme();
+  const s = useThemedStyles(makeStyles);
+  return (
+    <PressableScale
+      onPress={onPress}
+      style={[s.optionCard, selected && {borderColor: colors.accent.main, backgroundColor: colors.accent.main + '12'}]}>
+      <Icon name={icon} size={24} color={selected ? colors.accent.main : colors.text.secondary} />
+      <Text style={[s.optionLabel, selected && {color: colors.accent.main, fontWeight: '700'}]}>{label}</Text>
+    </PressableScale>
+  );
+};
+
+const RadioRow: React.FC<any> = ({selected, label, description, onPress}) => {
+  const {colors} = useTheme();
+  const s = useThemedStyles(makeStyles);
+  return (
+    <PressableScale
+      onPress={onPress}
+      style={[s.radioRow, selected && {borderColor: colors.accent.main, backgroundColor: colors.accent.main + '0E'}]}>
+      <View style={[s.radio, {borderColor: selected ? colors.accent.main : colors.border.strong}]}>
+        {selected && <View style={[s.radioDot, {backgroundColor: colors.accent.main}]} />}
+      </View>
+      <View style={{flex: 1}}>
+        <Text style={s.radioLabel}>{label}</Text>
+        <Text style={s.radioDesc}>{description}</Text>
+      </View>
+    </PressableScale>
+  );
+};
+
+const ToggleRow: React.FC<any> = ({label, description, value, onChange}) => {
+  const {colors} = useTheme();
+  const s = useThemedStyles(makeStyles);
+  return (
+    <View style={s.toggleRow}>
+      <View style={{flex: 1, marginRight: spacing.md}}>
+        <Text style={s.toggleLabel}>{label}</Text>
+        <Text style={s.toggleDesc}>{description}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        trackColor={{false: colors.border.strong, true: colors.accent.main}}
+        thumbColor="#FFFFFF"
+      />
+    </View>
+  );
+};
+
+const Review: React.FC<{label: string; value: string}> = ({label, value}) => {
+  const s = useThemedStyles(makeStyles);
+  return (
+    <View style={s.reviewItem}>
+      <Text style={s.reviewLabel}>{label}</Text>
+      <Text style={s.reviewValue}>{value}</Text>
+    </View>
+  );
+};
+
+const Section: React.FC<{title: string}> = ({title}) => {
+  const s = useThemedStyles(makeStyles);
+  return <Text style={s.sectionLabel}>{title}</Text>;
+};
+
 const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
   const dispatch = useDispatch<AppDispatch>();
   const {colors} = useTheme();
@@ -43,7 +109,7 @@ const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
     totalMembers: 5,
     beneficiairesParTour: 1,
     creatorTetes: 1,
-    startDate: '',
+    startDate: new Date().toISOString().slice(0, 10),
     distributionOrder: 'Sequential',
     latePenaltyPercent: 5,
     gracePeriodDays: 3,
@@ -114,53 +180,8 @@ const CreateTontineScreen: React.FC<Props> = ({navigation}) => {
     }
   };
 
-  // --- reusable selectors ---
-  const OptionCard = ({selected, icon, label, onPress}: any) => (
-    <PressableScale
-      onPress={onPress}
-      style={[s.optionCard, selected && {borderColor: colors.accent.main, backgroundColor: colors.accent.main + '12'}]}>
-      <Icon name={icon} size={24} color={selected ? colors.accent.main : colors.text.secondary} />
-      <Text style={[s.optionLabel, selected && {color: colors.accent.main, fontWeight: '700'}]}>{label}</Text>
-    </PressableScale>
-  );
-
-  const RadioRow = ({selected, label, description, onPress}: any) => (
-    <PressableScale
-      onPress={onPress}
-      style={[s.radioRow, selected && {borderColor: colors.accent.main, backgroundColor: colors.accent.main + '0E'}]}>
-      <View style={[s.radio, {borderColor: selected ? colors.accent.main : colors.border.strong}]}>
-        {selected && <View style={[s.radioDot, {backgroundColor: colors.accent.main}]} />}
-      </View>
-      <View style={{flex: 1}}>
-        <Text style={s.radioLabel}>{label}</Text>
-        <Text style={s.radioDesc}>{description}</Text>
-      </View>
-    </PressableScale>
-  );
-
-  const ToggleRow = ({label, description, value, onChange}: any) => (
-    <View style={s.toggleRow}>
-      <View style={{flex: 1, marginRight: spacing.md}}>
-        <Text style={s.toggleLabel}>{label}</Text>
-        <Text style={s.toggleDesc}>{description}</Text>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        trackColor={{false: colors.border.strong, true: colors.accent.main}}
-        thumbColor="#FFFFFF"
-      />
-    </View>
-  );
-
-  const Review = ({label, value}: {label: string; value: string}) => (
-    <View style={s.reviewItem}>
-      <Text style={s.reviewLabel}>{label}</Text>
-      <Text style={s.reviewValue}>{value}</Text>
-    </View>
-  );
-
-  const Section = ({title}: {title: string}) => <Text style={s.sectionLabel}>{title}</Text>;
+  // Selectors are defined at MODULE level (below) so they keep a stable identity
+  // across renders — fixes inputs losing focus / steps not progressing.
 
   const renderStep = () => {
     switch (currentStep) {

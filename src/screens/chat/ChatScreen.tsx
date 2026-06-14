@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Alert,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useSelector} from 'react-redux';
@@ -315,7 +316,21 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
         subtitle="Discussion de groupe"
         onBack={() => navigation?.goBack()}
         rightNode={
-          <PressableScale style={s.menuButton} scaleTo={0.9} onPress={() => {}}>
+          <PressableScale
+            style={s.menuButton}
+            scaleTo={0.9}
+            onPress={() =>
+              Alert.alert(
+                tontineName,
+                'Discussion de groupe — réservée aux membres de cette tontine. Les messages ne sont visibles que par les membres.',
+                tontineId
+                  ? [
+                      {text: 'Voir la tontine', onPress: () => (navigation as any)?.navigate('TontineDetail', {tontineId})},
+                      {text: 'Fermer', style: 'cancel'},
+                    ]
+                  : [{text: 'Fermer', style: 'cancel'}],
+              )
+            }>
             <MoreVerticalIcon size={22} color={colors.text.primary} />
           </PressableScale>
         }

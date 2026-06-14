@@ -171,16 +171,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
           <KenteStripe height={5} style={s.heroStripe} />
           <View style={s.heroMetrics}>
             <View style={s.metricPill}>
-              <View style={s.metricTop}>
-                <ArrowUpIcon size={13} color="#FFFFFF" />
-                <Text style={s.metricValue}>+125 000</Text>
-              </View>
-              <Text style={s.metricLabel}>Entrées ce mois</Text>
+              <Text style={s.metricValue}>{statActive}</Text>
+              <Text style={s.metricLabel}>Tontines actives</Text>
             </View>
             <View style={s.metricDivider} />
             <View style={s.metricPill}>
-              <Text style={s.metricValue}>3 jours</Text>
-              <Text style={s.metricLabel}>Prochaine cotisation</Text>
+              <Text style={s.metricValue}>{Math.round(statPunctuality)}%</Text>
+              <Text style={s.metricLabel}>Ponctualité</Text>
             </View>
           </View>
         </GradientCard>

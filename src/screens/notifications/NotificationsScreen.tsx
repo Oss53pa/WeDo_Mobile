@@ -130,8 +130,10 @@ const NotificationsScreen: React.FC<Props> = ({navigation}) => {
         break;
       case NotificationType.VOTE_CREATED:
       case NotificationType.VOTE_CLOSED:
+        // L'écran de vote dédié n'existe pas encore — ouvrir la tontine concernée
+        // évite un crash (la route VoteDetail n'est pas enregistrée).
         if (notification.relatedId) {
-          navigation.navigate('VoteDetail', {voteId: notification.relatedId});
+          navigation.navigate('TontineDetail', {tontineId: notification.relatedId});
         }
         break;
       case NotificationType.MESSAGE:

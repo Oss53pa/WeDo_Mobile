@@ -343,13 +343,10 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
           'credit-card-outline',
           'Moyens de paiement',
           undefined,
-          () => {
-            // Navigate to payment methods
-          }
+          () => (navigation as any).navigate('AddMobileMoneyAccount')
         )}
-        {renderSettingItem('shield-check', 'Vérification KYC', `Niveau ${profile?.kycLevel || 1}`, () => {
-          // Navigate to KYC verification
-        }, true, true)}
+        {renderSettingItem('shield-check', 'Vérification KYC', `Niveau ${profile?.kycLevel || 1}`, () =>
+          (navigation as any).navigate('Kyc'), true, true)}
       </Card>
 
       {/* Security Section */}
@@ -364,14 +361,8 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
           handleBiometricToggle
         )}
 
-
-        {renderSettingItem('two-factor-authentication', 'Authentification à deux facteurs', 'Désactivée', () => {
-          // Navigate to 2FA setup
-        })}
-
-        {renderSettingItem('eye-off', 'Confidentialité', undefined, () => {
-          // Navigate to privacy settings
-        }, true, true)}
+        {renderSettingItem('eye-off', 'Confidentialité', undefined, () =>
+          (navigation as any).navigate('Legal', {doc: 'privacy'}), true, true)}
       </Card>
 
       {/* Notifications Section */}
@@ -490,30 +481,14 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
 
         {renderSettingItem('download', 'Exporter mes données', undefined, handleExportData)}
 
-        {renderSettingItem('delete-sweep', 'Effacer le cache', '12.5 MB', () => {
-          Alert.alert(
-            'Effacer le cache',
-            'Voulez-vous effacer les données en cache ?',
-            [
-              {text: 'Annuler', style: 'cancel'},
-              {
-                text: 'Effacer',
-                onPress: () => {
-                  Alert.alert('Succès', 'Le cache a été effacé.');
-                },
-              },
-            ]
-          );
-        }, true, true)}
       </Card>
 
       {/* Support Section */}
       <Card style={s.card} padding={spacing.md}>
         <Text style={s.sectionTitle}>Support et informations</Text>
 
-        {renderSettingItem('help-circle', "Centre d'aide", undefined, () => {
-          // Navigate to help center
-        })}
+        {renderSettingItem('help-circle', "Centre d'aide", undefined, () =>
+          (navigation as any).navigate('HowItWorks'))}
 
         {renderSettingItem('file-document', "Conditions d'utilisation", undefined, () =>
           (navigation as any).navigate('Legal', {doc: 'cgu'}),
@@ -523,9 +498,9 @@ const SettingsScreen: React.FC<Props> = ({navigation}) => {
           (navigation as any).navigate('Legal', {doc: 'privacy'}),
         )}
 
-        {renderSettingItem('information', 'À propos', 'Version 1.0.0', () => {
-          // Navigate to about
-        }, false, true)}
+        {renderSettingItem('information', 'À propos', 'Version 1.0.0', () =>
+          Alert.alert('WeDo', 'WeDo — la tontine, en confiance.\nVersion 1.0.0\nUne application Atlas Studio.'),
+          false, true)}
       </Card>
 
       {/* Danger Zone */}
