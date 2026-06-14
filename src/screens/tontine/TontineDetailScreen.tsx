@@ -450,6 +450,21 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
                   style={{marginTop: spacing.sm}}
                 />
               )}
+              {(t.isMember || isAdmin) && (
+                <Button
+                  title="Discussion du groupe"
+                  variant="ghost"
+                  fullWidth
+                  icon="message-text"
+                  onPress={() =>
+                    (rootNav as any).navigate('Main', {
+                      screen: 'Messages',
+                      params: {screen: 'Chat', params: {tontineId, tontineName: t.name}},
+                    })
+                  }
+                  style={{marginTop: spacing.sm}}
+                />
+              )}
               {(t.isMember || isAdmin) && t.status !== 'Open' && (
                 <Button
                   title="Registre infalsifiable"

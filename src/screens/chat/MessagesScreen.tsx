@@ -121,7 +121,12 @@ const MessagesScreen: React.FC = () => {
         <PressableScale
           style={s.conversationItem}
           scaleTo={0.98}
-          onPress={() => navigation.navigate('Chat', {tontineId: item.tontineId})}>
+          onPress={() =>
+            navigation.navigate('Chat', {
+              tontineId: item.tontineId,
+              tontineName: item.tontineName,
+            })
+          }>
 
           <Avatar
             name={item.tontineName}

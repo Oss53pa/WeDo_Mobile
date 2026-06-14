@@ -14,6 +14,8 @@ import {
   Platform,
   Keyboard,
   Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useSelector} from 'react-redux';
@@ -22,6 +24,7 @@ import {
   Avatar,
   GradientView,
   PressableScale,
+  EmptyState,
 } from '@components/common';
 import {SendIcon, InfoIcon, CheckIcon, MoreVerticalIcon} from '@components/icons';
 import {
@@ -60,6 +63,10 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [resolvedName, setResolvedName] = useState(route?.params?.tontineName || '');
   const flatListRef = useRef<FlatList>(null);
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -68,44 +75,105 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
   const insets = useSafeAreaInsets();
 
   const tontineId = route?.params?.tontineId;
-  const tontineName = route?.params?.tontineName || 'Chat';
+  const tontineName = resolvedName || 'Discussion';
 
-  // Load initial messages
-  useEffect(() => {
-    if (!tontineId) return;
+  // Dedupe + chronological merge (self-heals if optimistic/realtime overlap).
+  const upsertMessages = useCallback((incoming: ChatMessage[]) => {
+    setMessages(prev => {
+      const map = new Map(prev.map(m => [m.id, m]));
+      for (const m of incoming) map.set(m.id, m);
+      return Array.from(map.values()).sort(
+        (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+      );
+    });
+  }, []);
 
-    const loadMessages = async () => {
-      const {data, error} = await supabase
+  const mapRow = useCallback(
+    (msg: any): ChatMessage => ({
+      id: msg.id,
+      senderId: msg.sender_id,
+      senderName: msg.sender_id === user?.id ? 'Moi' : msg.profiles?.nom_public || 'Membre',
+      content: msg.content,
+      timestamp: new Date(msg.created_at),
+      type: msg.message_type === 'System' ? 'system' : 'text',
+      isOwn: msg.sender_id === user?.id,
+    }),
+    [user?.id],
+  );
+
+  // Source of truth = server. Replaces the list (drops stale optimistic temp ids).
+  const fetchMessages = useCallback(
+    async (opts?: {silent?: boolean}) => {
+      if (!tontineId) return;
+      const {data, error: e} = await supabase
         .from('messages')
         .select('*, profiles:sender_id(id, nom_public, profile_photo_url)')
         .eq('tontine_id', tontineId)
         .order('created_at', {ascending: true})
-        .limit(100);
-
-      if (error) {
-        console.error('Error loading messages:', error);
+        .limit(200);
+      if (e) {
+        if (!opts?.silent) {
+          setError('Impossible de charger la discussion. Vérifiez votre connexion.');
+        }
         return;
       }
+      setError(null);
+      setMessages((data || []).map(mapRow));
+    },
+    [tontineId, mapRow],
+  );
 
-      const mapped: ChatMessage[] = (data || []).map((msg: any) => ({
-        id: msg.id,
-        senderId: msg.sender_id,
-        senderName: msg.profiles?.nom_public || 'Inconnu',
-        content: msg.content,
-        timestamp: new Date(msg.created_at),
-        type: msg.message_type === 'System' ? 'system' : 'text',
-        isOwn: msg.sender_id === user?.id,
-      }));
+  // Resolve the tontine name if it wasn't passed in params (e.g. from Messages list).
+  useEffect(() => {
+    if (route?.params?.tontineName || !tontineId) return;
+    supabase
+      .from('tontines')
+      .select('name')
+      .eq('id', tontineId)
+      .maybeSingle()
+      .then(({data}) => {
+        const name = (data as any)?.name;
+        if (name) setResolvedName(name);
+      });
+  }, [tontineId, route?.params?.tontineName]);
 
-      setMessages(mapped);
-    };
+  // Initial load with a friendly membership gate (RLS still enforces server-side).
+  const load = useCallback(async () => {
+    if (!tontineId || !user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const {data: mem} = await supabase
+      .from('tontine_members')
+      .select('status')
+      .eq('tontine_id', tontineId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!mem || (mem as any).status !== 'Active') {
+      setError('Discussion réservée aux membres actifs de cette tontine.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
+    await fetchMessages();
+    setLoading(false);
+  }, [tontineId, user, fetchMessages]);
 
-    loadMessages();
-  }, [tontineId, user?.id]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  // Subscribe to realtime messages
+  // Realtime with a safety net: re-fetch on (re)connect, poll if the socket drops.
   useEffect(() => {
     if (!tontineId) return;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    const stopPoll = () => {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    };
 
     const channel = supabase
       .channel(`chat:${tontineId}`)
@@ -117,38 +185,51 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
           table: 'messages',
           filter: `tontine_id=eq.${tontineId}`,
         },
-        async (payload) => {
+        async payload => {
           const msg = payload.new as any;
-
-          // Don't duplicate own messages (already added optimistically)
-          if (msg.sender_id === user?.id) return;
-
-          // Fetch sender profile
-          const {data: profile} = await supabase
-            .from('profiles')
-            .select('nom_public')
-            .eq('id', msg.sender_id)
-            .single();
-
-          const newMessage: ChatMessage = {
-            id: msg.id,
-            senderId: msg.sender_id,
-            senderName: (profile as any)?.nom_public || 'Inconnu',
-            content: msg.content,
-            timestamp: new Date(msg.created_at),
-            type: msg.message_type === 'System' ? 'system' : 'text',
-            isOwn: false,
-          };
-
-          setMessages(prev => [...prev, newMessage]);
+          let senderName = 'Membre';
+          if (msg.sender_id === user?.id) {
+            senderName = 'Moi';
+          } else {
+            const {data: profile} = await supabase
+              .from('profiles')
+              .select('nom_public')
+              .eq('id', msg.sender_id)
+              .maybeSingle();
+            senderName = (profile as any)?.nom_public || 'Membre';
+          }
+          upsertMessages([
+            {
+              id: msg.id,
+              senderId: msg.sender_id,
+              senderName,
+              content: msg.content,
+              timestamp: new Date(msg.created_at),
+              type: msg.message_type === 'System' ? 'system' : 'text',
+              isOwn: msg.sender_id === user?.id,
+            },
+          ]);
         },
       )
-      .subscribe();
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') {
+          stopPoll();
+          fetchMessages({silent: true}); // catch anything missed before subscription
+        } else if (
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT' ||
+          status === 'CLOSED'
+        ) {
+          // Socket unavailable → poll so messages still arrive.
+          if (!pollTimer) pollTimer = setInterval(() => fetchMessages({silent: true}), 5000);
+        }
+      });
 
     return () => {
+      stopPoll();
       supabase.removeChannel(channel);
     };
-  }, [tontineId, user?.id]);
+  }, [tontineId, user?.id, upsertMessages, fetchMessages]);
 
   // Keyboard listeners
   useEffect(() => {
@@ -199,7 +280,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
     setInputText('');
 
     // Optimistically add the message
-    const tempId = Date.now().toString();
+    const tempId = `temp-${Date.now()}`;
     const optimisticMessage: ChatMessage = {
       id: tempId,
       senderId: user.id,
@@ -218,7 +299,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
     }, 100);
 
     // Insert into Supabase
-    const {data, error} = await supabase
+    const {data, error: e} = await supabase
       .from('messages')
       .insert({
         tontine_id: tontineId,
@@ -229,16 +310,20 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
       .select()
       .single();
 
-    if (error) {
-      console.error('Error sending message:', error);
-      // Remove optimistic message on error
+    if (e) {
+      // Revert optimistic message and restore the text so nothing is lost.
       setMessages(prev => prev.filter(m => m.id !== tempId));
+      setInputText(messageContent);
+      Alert.alert(
+        'Message non envoyé',
+        "Impossible d'envoyer le message. Vérifiez votre connexion et que vous êtes bien membre actif de cette tontine.",
+      );
       return;
     }
 
-    // Replace optimistic message with real one
+    // Replace optimistic message with the real (persisted) one.
     setMessages(prev =>
-      prev.map(m => (m.id === tempId ? {...m, id: data.id} : m)),
+      prev.map(m => (m.id === tempId ? {...m, id: (data as any).id} : m)),
     );
   }, [inputText, tontineId, user]);
 
@@ -337,17 +422,54 @@ const ChatScreen: React.FC<ChatScreenProps> = ({route, navigation}) => {
       />
 
       {/* Messages List */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={item => item.id}
-        renderItem={renderMessage}
-        contentContainerStyle={s.messagesList}
-        showsVerticalScrollIndicator={false}
-        onContentSizeChange={() =>
-          flatListRef.current?.scrollToEnd({animated: false})
-        }
-      />
+      {loading ? (
+        <View style={s.centerFill}>
+          <ActivityIndicator color={colors.brand.terracotta} />
+          <Text style={s.centerText}>Chargement de la discussion…</Text>
+        </View>
+      ) : error ? (
+        <View style={s.centerFill}>
+          <EmptyState
+            icon="lock-outline"
+            title="Discussion indisponible"
+            description={error}
+          />
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={item => item.id}
+          renderItem={renderMessage}
+          contentContainerStyle={[
+            s.messagesList,
+            messages.length === 0 && s.messagesListEmpty,
+          ]}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({animated: false})
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true);
+                await fetchMessages({silent: true});
+                setRefreshing(false);
+              }}
+              colors={[colors.brand.terracotta]}
+              tintColor={colors.brand.terracotta}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon="message-text-outline"
+              title="Aucun message"
+              description="Soyez la première à écrire au groupe."
+            />
+          }
+        />
+      )}
 
       {/* Input Bar */}
       <View style={[s.inputContainer, {paddingBottom: composerBottom}]}>
@@ -401,6 +523,21 @@ const makeStyles = ({colors, shadows}: ThemedTokens) =>
       paddingHorizontal: spacing.md,
       paddingTop: spacing.sm,
       paddingBottom: spacing.lg,
+    },
+    messagesListEmpty: {
+      flexGrow: 1,
+      justifyContent: 'center',
+    },
+    centerFill: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.lg,
+      gap: spacing.sm,
+    },
+    centerText: {
+      ...typography.caption,
+      color: colors.text.secondary,
     },
     dateSeparator: {
       alignItems: 'center',
