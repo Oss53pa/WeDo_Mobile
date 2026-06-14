@@ -11,6 +11,7 @@ import authReducer from './slices/auth.slice';
 import userReducer from './slices/user.slice';
 import tontineReducer from './slices/tontine.slice';
 import notificationReducer from './slices/notification.slice';
+import {errorReportingMiddleware} from './errorReportingMiddleware';
 
 export const store = configureStore({
   reducer: {
@@ -25,7 +26,7 @@ export const store = configureStore({
         // Ignore these action types
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
-    }),
+    }).concat(errorReportingMiddleware),
   devTools: process.env.NODE_ENV !== 'production',
 });
 
