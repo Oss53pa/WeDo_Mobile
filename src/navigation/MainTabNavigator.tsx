@@ -7,6 +7,7 @@
 import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {createStackNavigator} from '@react-navigation/stack';
+import {getFocusedRouteNameFromRoute} from '@react-navigation/native';
 import {MainTabParamList, TontinesStackParamList} from './types';
 import {CustomTabBar} from '@components/navigation/CustomTabBar';
 
@@ -65,7 +66,18 @@ const MainTabNavigator: React.FC = () => {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Tontines" component={TontinesStackNavigator} />
       <Tab.Screen name="Create" component={CreateTontineScreen} />
-      <Tab.Screen name="Messages" component={MessagesStackNavigator} />
+      <Tab.Screen
+        name="Messages"
+        component={MessagesStackNavigator}
+        options={({route}) => ({
+          // Plein écran quand on est dans une conversation (la barre flottante
+          // recouvrirait le champ de saisie).
+          tabBarStyle:
+            (getFocusedRouteNameFromRoute(route) ?? 'MessagesList') === 'Chat'
+              ? {display: 'none'}
+              : undefined,
+        })}
+      />
       <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>
   );

@@ -75,10 +75,17 @@ const TabButton: React.FC<{
   );
 };
 
-export const CustomTabBar: React.FC<BottomTabBarProps> = ({state, navigation}) => {
+export const CustomTabBar: React.FC<BottomTabBarProps> = ({state, navigation, descriptors}) => {
   const {colors} = useTheme();
   const insets = useSafeAreaInsets();
   const s = useThemedStyles(makeStyles);
+
+  // Masque la barre quand l'écran focalisé le demande (ex. plein écran du chat,
+  // sinon la barre flottante recouvre le champ de saisie).
+  const focusedOptions = descriptors[state.routes[state.index].key]?.options;
+  if ((focusedOptions?.tabBarStyle as {display?: string} | undefined)?.display === 'none') {
+    return null;
+  }
 
   const onPress = (routeName: string, index: number, isFocused: boolean) => {
     const event = navigation.emit({type: 'tabPress', target: state.routes[index].key, canPreventDefault: true});
