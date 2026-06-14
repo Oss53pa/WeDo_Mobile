@@ -31,6 +31,7 @@ import {useDispatch, useSelector} from 'react-redux';
 import {AppDispatch, RootState} from '@store/store';
 import {fetchTontineDetail} from '@store/slices/tontine.slice';
 import * as tontineApi from '@services/api/tontine.api';
+import * as defaultsApi from '@services/api/defaults.api';
 import paymentApi from '@services/api/payment.api';
 import {IS_SUPABASE_CONFIGURED} from '@config/appConfig';
 import {formatCurrency, formatDate, formatRelativeTime} from '@utils/formatting';
@@ -84,6 +85,7 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const [joinTetes, setJoinTetes] = useState(1);
   const [fee, setFee] = useState<tontineApi.MyActivationFee | null>(null);
   const [payingFee, setPayingFee] = useState(false);
+  const [myDebt, setMyDebt] = useState<defaultsApi.Debt | null>(null);
   const [roundPayments, setRoundPayments] = useState<Record<string, string>>({});
 
   const {currentTontine, isLoading} = useSelector((state: RootState) => state.tontine);
@@ -104,6 +106,15 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
     }
     try {
       setFee(await tontineApi.getMyActivationFee(tontineId));
+    } catch {
+      /* non-blocking */
+    }
+    try {
+      const mine = await defaultsApi.getMyDebts();
+      const open = mine.find(
+        d => d.tontineId === tontineId && (d.status === 'open' || d.status === 'recovering'),
+      );
+      setMyDebt(open ?? null);
     } catch {
       /* non-blocking */
     }
@@ -344,6 +355,23 @@ const TontineDetailScreen: React.FC<Props> = ({route, navigation}) => {
                   disabled={payingFee}
                   onPress={handlePayFee}
                 />
+              </View>
+            )}
+
+            {t.isMember && myDebt && (
+              <View style={[s.feeBanner, {borderColor: colors.error}]}>
+                <View style={[s.feeBannerIcon, {backgroundColor: colors.brand.crimsonSoft}]}>
+                  <CashIcon size={20} color={colors.error} />
+                </View>
+                <View style={{flex: 1}}>
+                  <Text style={s.feeBannerTitle}>Dette à régulariser</Text>
+                  <Text style={s.feeBannerAmount}>
+                    {formatFcfa(BigInt(Math.max(myDebt.principalFcfa - myDebt.recoveredFcfa, 0)))}
+                  </Text>
+                  <Text style={s.feeBannerHint}>
+                    Régularisez auprès de l'organisatrice pour réhabiliter votre score de fiabilité.
+                  </Text>
+                </View>
               </View>
             )}
 

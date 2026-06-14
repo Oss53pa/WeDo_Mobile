@@ -4,7 +4,7 @@
  * members at risk, and a one-tap link to the infalsifiable registre.
  */
 import React, {useCallback, useEffect, useState} from 'react';
-import {View, Text, StyleSheet, ScrollView, RefreshControl} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, RefreshControl, Alert} from 'react-native';
 import {RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -37,6 +37,7 @@ import {
 } from '@theme';
 import {RootStackParamList} from '@navigation/types';
 import * as trustApi from '@services/api/trust.api';
+import * as defaultsApi from '@services/api/defaults.api';
 import {formatCurrency, formatDate} from '@utils/formatting';
 
 type Nav = StackNavigationProp<RootStackParamList, 'OrganizerDashboard'>;
@@ -57,17 +58,21 @@ const OrganizerDashboardScreen: React.FC<{navigation: Nav; route: Route}> = ({
   const [sequestre, setSequestre] = useState<trustApi.Sequestre | null>(null);
   const [check, setCheck] = useState<trustApi.RegistreVerification | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [debts, setDebts] = useState<defaultsApi.Debt[]>([]);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [ov, seq, vr] = await Promise.all([
+      const [ov, seq, vr, dt] = await Promise.all([
         trustApi.getOrganizerOverview(tontineId),
         trustApi.getSequestre(tontineId),
         trustApi.verifierRegistre(tontineId).catch(() => null),
+        defaultsApi.getDebts(tontineId).catch(() => []),
       ]);
       setOverview(ov);
       setSequestre(seq);
       setCheck(vr);
+      setDebts(dt);
     } finally {
       setLoading(false);
     }
@@ -102,12 +107,106 @@ const OrganizerDashboardScreen: React.FC<{navigation: Nav; route: Route}> = ({
     [load, show],
   );
 
+  const devise = sequestre?.devise ?? 'XOF';
+
+  const reorderByScore = useCallback(() => {
+    Alert.alert(
+      'Réordonner par score',
+      "Les membres au meilleur score de fiabilité passeront en premier. Les positions fixées à la main sont préservées. Continuer ?",
+      [
+        {text: 'Annuler', style: 'cancel'},
+        {
+          text: 'Réordonner',
+          onPress: async () => {
+            setBusy(true);
+            try {
+              const r = await defaultsApi.assignerOrdre(tontineId);
+              show(r.success ? `Ordre mis à jour (${r.reordered ?? 0} membres).` : r.error ?? 'Échec.', {
+                type: r.success ? 'success' : 'error',
+              });
+              if (r.success) await load();
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [tontineId, load, show]);
+
+  const constaterDefaut = useCallback(
+    (userId: string, name: string) => {
+      Alert.alert(
+        'Constater un défaut',
+        `Déclarer ${name} en défaut après versement ? La caution éventuelle est mobilisée, une preuve de créance est générée et le score est fortement dégradé. Action réservée à un membre ayant reçu sa cagnotte sans avoir fini de cotiser.`,
+        [
+          {text: 'Annuler', style: 'cancel'},
+          {
+            text: 'Constater le défaut',
+            style: 'destructive',
+            onPress: async () => {
+              setBusy(true);
+              try {
+                const r = await defaultsApi.constaterDefaut(tontineId, userId, 'tableau de bord');
+                if (r.success) {
+                  show(
+                    `Défaut constaté. Caution mobilisée : ${formatCurrency(r.caution_used ?? 0, devise)} · dette : ${formatCurrency(r.outstanding ?? 0, devise)}.`,
+                    {type: 'success'},
+                  );
+                  await load();
+                } else {
+                  show(r.error ?? 'Action impossible.', {type: 'error'});
+                }
+              } finally {
+                setBusy(false);
+              }
+            },
+          },
+        ],
+      );
+    },
+    [tontineId, load, show, devise],
+  );
+
+  const regulariserDette = useCallback(
+    (debt: defaultsApi.Debt, name: string) => {
+      const reste = Math.max(debt.principalFcfa - debt.recoveredFcfa, 0);
+      Alert.alert(
+        'Régulariser la dette',
+        `Enregistrer le remboursement intégral de ${formatCurrency(reste, devise)} pour ${name} ? Une dette soldée réhabilite le score du membre.`,
+        [
+          {text: 'Annuler', style: 'cancel'},
+          {
+            text: 'Marquer comme remboursée',
+            onPress: async () => {
+              setBusy(true);
+              try {
+                const r = await defaultsApi.regulariserDette(debt.id, reste);
+                show(
+                  r.success
+                    ? r.status === 'settled'
+                      ? 'Dette soldée — score réhabilité.'
+                      : 'Remboursement enregistré.'
+                    : r.error ?? 'Échec.',
+                  {type: r.success ? 'success' : 'error'},
+                );
+                if (r.success) await load();
+              } finally {
+                setBusy(false);
+              }
+            },
+          },
+        ],
+      );
+    },
+    [load, show, devise],
+  );
+
   if (loading) return <LoadingSpinner fullScreen text="Chargement du tableau de bord…" />;
 
   const o = overview!;
   const progress = o.activeCount > 0 ? o.paidCount / o.activeCount : 0;
   const remaining = Math.max(o.activeCount - o.paidCount, 0);
-  const devise = sequestre?.devise ?? 'XOF';
   const registreOk = check?.valid && check?.conservationOk;
 
   return (
@@ -214,6 +313,61 @@ const OrganizerDashboardScreen: React.FC<{navigation: Nav; route: Route}> = ({
           </Card>
         </Animated.View>
 
+        {/* Ordre de passage par score */}
+        <Animated.View entering={FadeInDown.delay(80).duration(360)} style={s.section}>
+          <Card variant="default" padding={spacing.lg}>
+            <Text style={s.cardTitle}>Ordre de passage</Text>
+            <Text style={s.progressHint}>
+              Faire passer en premier les membres au meilleur score de fiabilité (positions fixées
+              à la main préservées). C'est le principal levier anti-défaut.
+            </Text>
+            <Button
+              title="Réordonner par score"
+              variant="outline"
+              size="medium"
+              icon="sort"
+              fullWidth
+              loading={busy}
+              onPress={reorderByScore}
+              style={{marginTop: spacing.md}}
+            />
+          </Card>
+        </Animated.View>
+
+        {/* Dettes en cours (défauts / avances) */}
+        {debts.filter(d => d.status === 'open' || d.status === 'recovering').length > 0 && (
+          <Animated.View entering={FadeInDown.delay(100).duration(360)} style={s.section}>
+            <Text style={s.sectionTitle}>Dettes en cours</Text>
+            {debts
+              .filter(d => d.status === 'open' || d.status === 'recovering')
+              .map((d, i) => {
+                const reste = Math.max(d.principalFcfa - d.recoveredFcfa, 0);
+                const name = d.debtorName ?? 'Membre';
+                return (
+                  <Animated.View key={d.id} entering={FadeInDown.delay(120 + i * 40).duration(300)}>
+                    <View style={s.pendingRow}>
+                      <Avatar name={name} size="md" />
+                      <View style={{flex: 1, marginLeft: spacing.md}}>
+                        <Text style={s.riskName} numberOfLines={1}>{name}</Text>
+                        <Text style={s.pendingMeta}>
+                          Reste dû {formatCurrency(reste, devise)}
+                          {d.proofHash ? ` · preuve ${d.proofHash.slice(0, 8)}…` : ''}
+                        </Text>
+                      </View>
+                      <Button
+                        title="Régulariser"
+                        variant="outline"
+                        size="small"
+                        disabled={busy}
+                        onPress={() => regulariserDette(d, name)}
+                      />
+                    </View>
+                  </Animated.View>
+                );
+              })}
+          </Animated.View>
+        )}
+
         {/* Pending contributions to confirm (cash / bank transfer) */}
         <Animated.View entering={FadeInDown.delay(90).duration(360)} style={s.section}>
           <View style={s.rowBetween}>
@@ -295,6 +449,13 @@ const OrganizerDashboardScreen: React.FC<{navigation: Nav; route: Route}> = ({
                       </Text>
                     </View>
                   </View>
+                  <Button
+                    title="Défaut"
+                    variant="ghost"
+                    size="small"
+                    disabled={busy}
+                    onPress={() => constaterDefaut(m.userId, m.fullName)}
+                  />
                   <ChevronRightIcon size={20} color={colors.text.tertiary} />
                 </PressableScale>
               </Animated.View>
