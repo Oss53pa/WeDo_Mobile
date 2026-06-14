@@ -34,7 +34,23 @@ export type RootStackParamList = {
   Registre: {tontineId: string};
   OrganizerDashboard: {tontineId: string};
   KycP2: undefined;
+  Receipt: {receipt: ReceiptParam; tontineName?: string; devise?: string};
+  Score: undefined;
 };
+
+// Reçu infalsifiable — un mouvement du registre SHA-256 (champs sérialisables).
+export interface ReceiptParam {
+  id: string;
+  type: string;
+  sens: 'credit' | 'debit';
+  montant: number;
+  round?: number;
+  seq: number;
+  hash: string;
+  prevHash: string;
+  createdAt: string;
+  referenceExterne?: string;
+}
 
 // Auth Stack Navigator
 export type AuthStackParamList = {

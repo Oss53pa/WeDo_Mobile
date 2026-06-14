@@ -19,6 +19,7 @@ import {
   Badge,
   LoadingSpinner,
   EmptyState,
+  PressableScale,
 } from '@components/common';
 import {
   CheckIcon,
@@ -27,6 +28,7 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   RefreshIcon,
+  ChevronRightIcon,
 } from '@components/icons';
 import {
   useTheme,
@@ -229,7 +231,18 @@ const RegistreScreen: React.FC<{navigation: Nav; route: Route}> = ({
                 <Animated.View
                   key={m.id}
                   entering={FadeInDown.delay(140 + i * 24).duration(300)}>
-                  <View style={s.mvtRow}>
+                  <PressableScale
+                    style={s.mvtRow}
+                    onPress={() =>
+                      navigation.navigate('Receipt', {
+                        receipt: {
+                          id: m.id, type: m.type, sens: m.sens, montant: m.montant,
+                          round: m.round, seq: m.seq, hash: m.hash, prevHash: m.prevHash,
+                          createdAt: m.createdAt, referenceExterne: m.referenceExterne,
+                        },
+                        devise,
+                      })
+                    }>
                     <View style={[s.mvtIcon, {backgroundColor: tone + '14'}]}>
                       {credit ? (
                         <ArrowDownIcon size={18} color={tone} />
@@ -252,10 +265,11 @@ const RegistreScreen: React.FC<{navigation: Nav; route: Route}> = ({
                         #{m.seq} · {formatDateTime(m.createdAt)}
                       </Text>
                       <Text style={s.mvtHash} numberOfLines={1}>
-                        ⛓ {m.hash.slice(0, 24)}…
+                        ⛓ {m.hash.slice(0, 24)}… · Voir le reçu
                       </Text>
                     </View>
-                  </View>
+                    <ChevronRightIcon size={18} color={colors.text.tertiary} />
+                  </PressableScale>
                 </Animated.View>
               );
             })

@@ -19,6 +19,8 @@ import KycScreen from '@screens/profile/KycScreen';
 import KycP2Screen from '@screens/profile/KycP2Screen';
 import AddMobileMoneyAccountScreen from '@screens/payment/AddMobileMoneyAccountScreen';
 import RegistreScreen from '@screens/tontine/RegistreScreen';
+import ReceiptScreen from '@screens/tontine/ReceiptScreen';
+import ScoreScreen from '@screens/profile/ScoreScreen';
 import OrganizerDashboardScreen from '@screens/tontine/OrganizerDashboardScreen';
 import TontineScheduleScreen from '@screens/tontine/TontineScheduleScreen';
 import AmbassadorScreen from '@screens/ambassador/AmbassadorScreen';
@@ -49,6 +51,8 @@ const RootNavigator: React.FC<RootNavigatorProps> = ({isAuthenticated}) => {
           <Stack.Screen name="KycP2" component={KycP2Screen} />
           <Stack.Screen name="AddMobileMoneyAccount" component={AddMobileMoneyAccountScreen} />
           <Stack.Screen name="Registre" component={RegistreScreen} />
+          <Stack.Screen name="Receipt" component={ReceiptScreen} />
+          <Stack.Screen name="Score" component={ScoreScreen} />
           <Stack.Screen name="OrganizerDashboard" component={OrganizerDashboardScreen} />
           <Stack.Screen name="TontineSchedule" component={TontineScheduleScreen} />
           <Stack.Screen name="Ambassador" component={AmbassadorScreen} />
