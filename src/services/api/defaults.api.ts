@@ -77,6 +77,18 @@ export const setDefaultsConfig = (
 export const assignerOrdre = (tontineId: string) =>
   callRpc('assigner_ordre', {p_tontine: tontineId});
 
+/** Ordre de passage par tirage au sort transparent (organisatrice). */
+export const tirerAuSort = (tontineId: string) =>
+  callRpc('tirer_au_sort_ordre', {p_tontine: tontineId});
+
+/** Fixer manuellement la position d'un membre (verrouillée). Organisatrice. */
+export const fixerOrdreManuel = (tontineId: string, userId: string, position: number) =>
+  callRpc('fixer_ordre_manuel', {p_tontine: tontineId, p_user: userId, p_position: position});
+
+/** Lever le verrou de position d'un membre. Organisatrice. */
+export const libererOrdreManuel = (tontineId: string, userId: string) =>
+  callRpc('liberer_ordre_manuel', {p_tontine: tontineId, p_user: userId});
+
 /** Déposer/mettre à jour sa caution (montant en FCFA entier). */
 export const deposerCaution = (tontineId: string, amountFcfa: number) =>
   callRpc('deposer_caution', {p_tontine: tontineId, p_amount: Math.round(amountFcfa)});
@@ -157,6 +169,7 @@ export const getCautions = async (tontineId: string): Promise<Caution[]> => {
 };
 
 export default {
-  setDefaultsConfig, assignerOrdre, deposerCaution, couvrirManque, constaterDefaut,
-  desister, regulariserDette, rejoindreListeAttente, getDebts, getMyDebts, getCautions,
+  setDefaultsConfig, assignerOrdre, tirerAuSort, fixerOrdreManuel, libererOrdreManuel,
+  deposerCaution, couvrirManque, constaterDefaut, desister, regulariserDette,
+  rejoindreListeAttente, getDebts, getMyDebts, getCautions,
 };

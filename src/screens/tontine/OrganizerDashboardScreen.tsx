@@ -109,30 +109,49 @@ const OrganizerDashboardScreen: React.FC<{navigation: Nav; route: Route}> = ({
 
   const devise = sequestre?.devise ?? 'XOF';
 
+  const runReorder = useCallback(
+    async (fn: () => Promise<{success: boolean; error?: string}>, okMsg: string) => {
+      setBusy(true);
+      try {
+        const r = await fn();
+        show(r.success ? okMsg : r.error ?? 'Échec.', {type: r.success ? 'success' : 'error'});
+        if (r.success) await load();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load, show],
+  );
+
   const reorderByScore = useCallback(() => {
     Alert.alert(
       'Réordonner par score',
-      "Les membres au meilleur score de fiabilité passeront en premier. Les positions fixées à la main sont préservées. Continuer ?",
+      'Les membres au meilleur score de fiabilité passeront en premier. Les positions fixées à la main sont préservées. Continuer ?',
       [
         {text: 'Annuler', style: 'cancel'},
         {
           text: 'Réordonner',
-          onPress: async () => {
-            setBusy(true);
-            try {
-              const r = await defaultsApi.assignerOrdre(tontineId);
-              show(r.success ? `Ordre mis à jour (${r.reordered ?? 0} membres).` : r.error ?? 'Échec.', {
-                type: r.success ? 'success' : 'error',
-              });
-              if (r.success) await load();
-            } finally {
-              setBusy(false);
-            }
-          },
+          onPress: () =>
+            runReorder(() => defaultsApi.assignerOrdre(tontineId), 'Ordre mis à jour par score.'),
         },
       ],
     );
-  }, [tontineId, load, show]);
+  }, [tontineId, runReorder]);
+
+  const reorderRandom = useCallback(() => {
+    Alert.alert(
+      'Tirage au sort',
+      'Les positions seront attribuées aléatoirement (transparent et journalisé). Les positions fixées à la main sont préservées. Continuer ?',
+      [
+        {text: 'Annuler', style: 'cancel'},
+        {
+          text: 'Tirer au sort',
+          onPress: () =>
+            runReorder(() => defaultsApi.tirerAuSort(tontineId), 'Ordre tiré au sort.'),
+        },
+      ],
+    );
+  }, [tontineId, runReorder]);
 
   const constaterDefaut = useCallback(
     (userId: string, name: string) => {
@@ -318,8 +337,9 @@ const OrganizerDashboardScreen: React.FC<{navigation: Nav; route: Route}> = ({
           <Card variant="default" padding={spacing.lg}>
             <Text style={s.cardTitle}>Ordre de passage</Text>
             <Text style={s.progressHint}>
-              Faire passer en premier les membres au meilleur score de fiabilité (positions fixées
-              à la main préservées). C'est le principal levier anti-défaut.
+              Définissez l'ordre des bénéficiaires. Par score = principal levier anti-défaut
+              (meilleurs scores d'abord) ; tirage au sort = équité transparente. Les positions
+              fixées à la main sont toujours préservées.
             </Text>
             <Button
               title="Réordonner par score"
@@ -330,6 +350,16 @@ const OrganizerDashboardScreen: React.FC<{navigation: Nav; route: Route}> = ({
               loading={busy}
               onPress={reorderByScore}
               style={{marginTop: spacing.md}}
+            />
+            <Button
+              title="Tirage au sort"
+              variant="ghost"
+              size="medium"
+              icon="dice-multiple"
+              fullWidth
+              disabled={busy}
+              onPress={reorderRandom}
+              style={{marginTop: spacing.sm}}
             />
           </Card>
         </Animated.View>
