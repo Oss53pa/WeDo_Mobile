@@ -51,6 +51,19 @@ const Avatar: React.FC<AvatarProps> = ({
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
   })();
 
+  // Couleur de fond déterministe par nom (initiales blanches) : contraste garanti
+  // en clair comme en sombre, plutôt que crème-sur-crème.
+  const palette = [
+    colors.brand.terracotta,
+    colors.brand.emerald,
+    colors.brand.indigo,
+    colors.brand.crimson,
+  ];
+  const hash = name
+    ? name.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7)
+    : 0;
+  const autoBg = palette[hash % palette.length];
+
   const statusColor =
     status === 'online' ? colors.success : status === 'busy' ? colors.warning : colors.neutral[400];
 
@@ -62,7 +75,7 @@ const Avatar: React.FC<AvatarProps> = ({
           width: sizeValue,
           height: sizeValue,
           borderRadius: sizeValue / 2,
-          backgroundColor: imageUrl ? colors.surface.sunken : backgroundColor ?? colors.primary.main,
+          backgroundColor: imageUrl ? colors.surface.sunken : backgroundColor ?? autoBg,
         },
       ]}>
       {imageUrl ? (
@@ -72,7 +85,7 @@ const Avatar: React.FC<AvatarProps> = ({
           resizeMode="cover"
         />
       ) : (
-        <Text style={[styles.initials, {fontSize: sizeValue * 0.4, color: textColor ?? colors.text.onBrand}]}>
+        <Text style={[styles.initials, {fontSize: sizeValue * 0.4, color: textColor ?? '#FFFFFF'}]}>
           {initials}
         </Text>
       )}
