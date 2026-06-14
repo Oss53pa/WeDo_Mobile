@@ -203,13 +203,26 @@ const ProfileScreen: React.FC<Props> = ({navigation}) => {
             <Text style={s.cardTitle}>Badges</Text>
             <View style={s.badgeWrap}>
               {profile.badges.map((b: any) => (
-                <View key={b.id} style={s.badgeChip}>
+                <PressableScale
+                  key={b.id}
+                  style={s.badgeChip}
+                  scaleTo={0.96}
+                  onPress={() => {
+                    const earned = b.earnedAt
+                      ? `\n\nObtenu le ${new Date(b.earnedAt).toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'})}`
+                      : '';
+                    Alert.alert(
+                      b.name,
+                      `${b.description ?? 'Badge de fiabilité WeDo.'}${earned}`,
+                      [{text: 'Fermer', style: 'cancel'}],
+                    );
+                  }}>
                   <View style={s.badgeIcon}>
                     <StarIcon size={18} color={colors.brand.gold} filled />
                   </View>
                   <Text style={s.badgeName} numberOfLines={1}>{b.name}</Text>
                   <Text style={s.badgeDesc} numberOfLines={2}>{b.description}</Text>
-                </View>
+                </PressableScale>
               ))}
             </View>
           </View>
